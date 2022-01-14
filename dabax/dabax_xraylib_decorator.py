@@ -2,11 +2,11 @@
 # dabax functions with the same interface as xraylib
 #
 import numpy
-from dabax.dabax_base import DabaxBase
-from orangecontrib.xoppy.util.xoppy_xraylib_util import bragg_metrictensor
+# from orangecontrib.xoppy.util.xoppy_xraylib_util import bragg_metrictensor
 import scipy.constants as codata
 from silx.io.specfile import SpecFile
-from dabax.common_tools import parse_formula, atomic_symbols_dabax, atomic_names_dabax, atomic_number_dabax
+from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
+from dabax.common_tools import bragg_metrictensor
 
 class DabaxXraylibDecorator(object):
 
@@ -153,44 +153,62 @@ class DabaxXraylibDecorator(object):
         dspacing = self.Crystal_dSpacing(cryst, h, k, l)  # in A
         wavelength = codata.h * codata.c / codata.e / (E_keV * 1e3) * 1e10  # in A
         return numpy.arcsin(wavelength / 2 / dspacing)
-    #
-    #
-    #   TODO:
-    #          F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #
-    #          F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #
 
+    #
+    #
+    #
     def CompoundParser(self, descriptor, verbose=True):
+        return self.compound_parser(descriptor, verbose=verbose)
 
-        zetas, fatomic = parse_formula(formula=descriptor, verbose=verbose)
+    #
+    #
+    #
+    def SymbolToAtomicNumber(self, symbol):
+        return atomic_number(symbol)
 
-        elements = []
-        atomic_weight = []
-        massFractions = []
+    def AtomicNumberToSymbol(self, Z):
+        return atomic_symbols()[Z]
 
-        for i ,z in enumerate(zetas):
-            symbol = atomic_symbols_dabax()[z]
-            atw = self.atomic_weights_dabax(symbol, verbose=verbose)
-            elements.append(z)
-            atomic_weight.append(atw)
-            massFractions.append(fatomic[i ] *atw)
+    def ElementDensity(self, Z):
+        return self.element_density(self.AtomicNumberToSymbol(Z))
 
-        mweight = 0.0
-        for i in range(len(fatomic)):
-            mweight += atomic_weight[i] * fatomic[i]
+    def AtomicWeight(self, Z):
+        return self.atomic_weights(self.AtomicNumberToSymbol(Z))
 
-        for i in range(len(massFractions)):
-            massFractions[i] /= mweight
-
-        new_dict = {
-            "nElements": len(elements),
-            "nAtomsAll": float(numpy.array(fatomic).sum()),
-            "Elements" :zetas,
-            "massFractions": massFractions,
-            "nAtoms" :fatomic,
-            "molarMass": mweight,
-        }
-
-        return new_dict
-
+    #
+    #
+    #  (used in xoppy_xraylib_util):
+    #
+    #   DONE:
+    #
+    #  xraylib.Crystal_GetCrystal(descriptor)
+    #  xraylib.Crystal_dSpacing(cryst, hh, kk, ll)
+    #  xraylib.Crystal_dSpacing
+    #  xraylib.CompoundParser(descriptor)
+    #  xraylib.SymbolToAtomicNumber(descriptor)
+    #  xraylib.AtomicNumberToSymbol(zi)
+    #  xraylib.ElementDensity(Z)
+    #  xraylib.AtomicWeight
+    #
+    #   TODO
+    #
+    #  xraylib.GetCompoundDataNISTList()
+    #  xraylib.GetCompoundDataNISTByName(DESCRIPTOR)
+    #  xraylib.GetCompoundDataNISTByIndex(DESCRIPTOR)
+    #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
+    #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
+    #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
+    #  xraylib.Fi(Z,1e-3*ienergy)
+    #  xraylib.Fii(Z,1e-3*ienergy)
+    #  xraylib.CS_Phot()
+    #  xraylib.CSb_Photo(Z,1e-3*ienergy)
+    #  xraylib.CSb_Total(Z,1e-3*ienergy)
+    #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
+    #  xraylib.CSb_Compt(Z,1e-3*ienergy)
+    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
+    #  F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+    #  F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+    #

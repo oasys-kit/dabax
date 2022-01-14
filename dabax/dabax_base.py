@@ -12,11 +12,10 @@ from urllib.request import urlretrieve
 from silx.io.specfile import SpecFile
 
 from dabax.common_tools import calculate_f0_from_f0coeff
-from dabax.common_tools import parse_formula, atomic_symbols_dabax, atomic_names_dabax, atomic_number_dabax
+from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
+from dabax.common_tools import parse_formula
 
 from scipy.optimize import curve_fit
-from orangecontrib.xoppy.util.xoppy_xraylib_util import bragg_metrictensor
-
 
 class DabaxBase(object):
     def __init__(self,
@@ -137,10 +136,10 @@ class DabaxBase(object):
     def f0_with_fractional_charge(self, Z, charge=0.0, verbose=True):
         filename = self.get_file_f0()
 
-        symbol = atomic_symbols_dabax()[Z]
+        symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
-            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol, filename=filename)
+            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol)
         else:
             # retrieve all entries
             filename = self.get_dabax_file(filename, verbose=verbose)
@@ -243,7 +242,7 @@ class DabaxBase(object):
     # miscellaneous
     ######################
 
-    def atomic_weights_dabax(self, descriptor,
+    def atomic_weights(self, descriptor,
                              filename="AtomicWeights.dat",
                              verbose=True,
                              ):
@@ -302,12 +301,12 @@ class DabaxBase(object):
             return out
 
 
-    def atomic_constants_dabax(self, descriptor,
-                               filename="AtomicConstants.dat",
-                               verbose=True,
-                               return_item=0,
-                               return_label=None,
-                               ):
+    def atomic_constants(self, descriptor,
+                         filename="AtomicConstants.dat",
+                         verbose=True,
+                         return_item=0,
+                         return_label=None,
+                         ):
         """
         ;	Returns atomic constants from DABAX.
         ;
@@ -407,46 +406,54 @@ class DabaxBase(object):
             return out
 
 
-    def element_density_dabax(self, descriptor,
-                              filename="AtomicConstants.dat", verbose=True ,):
+    def element_density(self, descriptor,
+                        filename="AtomicConstants.dat", verbose=True, ):
 
-        return self.atomic_constants_dabax(descriptor, filename=filename, return_label="Density",
-                                      verbose=verbose)
-
-
+        return self.atomic_constants(descriptor, filename=filename, return_label="Density",
+                                     verbose=verbose)
 
 
+    def compound_parser(self, descriptor, verbose=True):
 
+        zetas, fatomic = parse_formula(formula=descriptor, verbose=verbose)
+
+        elements = []
+        atomic_weight = []
+        massFractions = []
+
+        for i ,z in enumerate(zetas):
+            symbol = atomic_symbols()[z]
+            atw = self.atomic_weights(symbol, verbose=verbose)
+            elements.append(z)
+            atomic_weight.append(atw)
+            massFractions.append(fatomic[i ] *atw)
+
+        mweight = 0.0
+        for i in range(len(fatomic)):
+            mweight += atomic_weight[i] * fatomic[i]
+
+        for i in range(len(massFractions)):
+            massFractions[i] /= mweight
+
+        new_dict = {
+            "nElements": len(elements),
+            "nAtomsAll": float(numpy.array(fatomic).sum()),
+            "Elements" :zetas,
+            "massFractions": massFractions,
+            "nAtoms" :fatomic,
+            "molarMass": mweight,
+        }
+
+        return new_dict
 
 if __name__ == '__main__':
     import socket
     if socket.getfqdn().find("esrf") >= 0:
-        dabax_repository = "http://ftp.esrf.fr/pub/scisoft/DabaxFiles/"
+        dx = DabaxBase(dabax_repository="http://ftp.esrf.fr/pub/scisoft/DabaxFiles/")
     else:
-        dabax_repository = "http://ftp.esrf.eu/pub/scisoft/DabaxFiles/"
+        dx = DabaxBase()
 
-    dx = DabaxBase(dabax_repository=dabax_repository)
     print(dx.info())
-
-    # #
-    # # crystal tests
-    # #
-    # if True:
-    #     print(dx.get_dabax_file("Crystals.dat", verbose=0))
-    #
-    #     print(dx.get_f0_coeffs_from_dabax_file("Y3+"))
-    #
-    #     print(dx.Crystal_GetCrystalsList())
-    #
-    #     yb = dx.Crystal_GetCrystal('YB66', filename='Crystals.dat')
-    #
-    #     si = dx.Crystal_GetCrystal("Si")
-    #     # print("Si 111 d-spacing: ", Crystal_dSpacing(si,1,1,1))
-    #     # print("Si 111 bragg angle at 10 keV [deg]: ", 180 / numpy.pi * Bragg_angle(si,10, 1,1,1))
-    #
-    # #
-    # # crystal vs xraylib tests
-    # #
 
 
     #
@@ -508,19 +515,19 @@ if __name__ == '__main__':
         #
         # misc
         #
-        print("Ge, Si: ", dx.atomic_weights_dabax(["Ge","Si"]))
-        print("70Ge: ", dx.atomic_weights_dabax("70Ge"))
+        print("Ge, Si: ", dx.atomic_weights(["Ge","Si"]))
+        print("70Ge: ", dx.atomic_weights("70Ge"))
 
-        print(atomic_symbols_dabax()[14], atomic_names_dabax()[14])
+        print(atomic_symbols()[14], atomic_names()[14])
 
-        print("Si atomic mass",    dx.atomic_constants_dabax("Si", return_item=2, verbose=0))
-        print("Si,Ge atomic mass", dx.atomic_constants_dabax(["Si","Ge"], return_item=2             , verbose=0))
-        print("Si,Co atomic mass", dx.atomic_constants_dabax(["Si", "Co"], return_label='AtomicMass', verbose=0))
+        print("Si atomic mass", dx.atomic_constants("Si", return_item=2, verbose=0))
+        print("Si,Ge atomic mass", dx.atomic_constants(["Si", "Ge"], return_item=2, verbose=0))
+        print("Si,Co atomic mass", dx.atomic_constants(["Si", "Co"], return_label='AtomicMass', verbose=0))
 
-        print("Z=27", atomic_symbols_dabax()[27])
-        print("Ge Z=%d" % atomic_number_dabax("Ge"))
+        print("Z=27", atomic_symbols()[27])
+        print("Ge Z=%d" % atomic_number("Ge"))
 
-        print("Density Si: ", dx.element_density_dabax("Si", verbose=0))
+        print("Density Si: ", dx.element_density("Si", verbose=0))
 
 
 

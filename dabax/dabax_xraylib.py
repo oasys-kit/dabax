@@ -17,39 +17,47 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
                            file_CrossSec=file_CrossSec)
 
 if __name__ == "__main__":
-    import socket
     import xraylib
 
+    import socket
     if socket.getfqdn().find("esrf") >= 0:
-        dabax_repository = "http://ftp.esrf.fr/pub/scisoft/DabaxFiles/"
+        dx = DabaxXraylib(dabax_repository="http://ftp.esrf.fr/pub/scisoft/DabaxFiles/")
     else:
-        dabax_repository = "http://ftp.esrf.eu/pub/scisoft/DabaxFiles/"
+        dx = DabaxXraylib()
 
-    dx = DabaxXraylib(dabax_repository=dabax_repository)
     print(dx.info())
 
     #
     # crystal tests
     #
-    if True:
-        print(dx.get_dabax_file("Crystals.dat", verbose=0))
 
-        print(dx.get_f0_coeffs_from_dabax_file("Y3+"))
+    print("DABAX crystal list: \n",        dx.Crystal_GetCrystalsList())
+    print("XRAYLIB crystal list: \n", xraylib.Crystal_GetCrystalsList())
 
-        print(dx.Crystal_GetCrystalsList())
+    siD = dx.Crystal_GetCrystal('Si')
+    siX = xraylib.Crystal_GetCrystal('Si')
 
-        yb = dx.Crystal_GetCrystal('YB66', filename='Crystals.dat')
+    print("DABAX crystal si: \n",        dx.Crystal_GetCrystal('Si'))
+    print("XRAYLIB crystal si: \n", xraylib.Crystal_GetCrystal('Si'))
 
-        si = dx.Crystal_GetCrystal("Si")
-        print("Si 111 d-spacing: ", dx.Crystal_dSpacing(si,1,1,1))
-        print("Si 111 bragg angle at 10 keV [deg]: ", 180 / numpy.pi * dx.Bragg_angle(si,10, 1,1,1))
+    print("Si 111 d-spacing: DABAX: %g, XRAYLIB: %g "% \
+          (dx.Crystal_dSpacing(siD,1,1,1),dx.Crystal_dSpacing(siX,1,1,1)))
+
+    print("Si 111 bragg angle at 10 keV [deg]: DABAX: %g, XRAYLIB: %g "% (\
+          180 / numpy.pi * dx.Bragg_angle(siD,10, 1,1,1), \
+          180 / numpy.pi * dx.Bragg_angle(siX, 10, 1, 1, 1)))
 
     #
-    # crystal vs xraylib tests
+    # dabax vs xraylib tests
     #
 
     # TODO: does not work for double parenthesis "Ga2(F(KI))3"
     for descriptor in ["H2O","Eu2H2.1O1.3","PO4", "Ca5(PO4)3.1F"]:
-        print("\n",descriptor)
-        print("DABAX: ", dx.CompoundParser(descriptor, verbose=0))
+        print("\ncompound parsing for %s" % descriptor)
+        print("DABAX: ", dx.CompoundParser(descriptor))
         print("XRAYLIB: ", xraylib.CompoundParser(descriptor))
+
+    print("Si is Z= %d (DABAX)  %d (XRAYLIB)" % (dx.SymbolToAtomicNumber("Si"),xraylib.SymbolToAtomicNumber("Si")))
+    print("Z=23 is %s (DABAX)  %s (XRAYLIB)" % (dx.AtomicNumberToSymbol(23),xraylib.AtomicNumberToSymbol(23)))
+    print("Density Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.ElementDensity(30),xraylib.ElementDensity(30)))
+    print("AtWeight Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.AtomicWeight(30),xraylib.AtomicWeight(30)))
