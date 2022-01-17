@@ -1,7 +1,6 @@
 """
 
-dabax: (dataBase for x-ray data)
-       python module for processing remote files containing dabax
+dabax: python module for processing remote files containing dabax
 
 """
 
@@ -27,8 +26,8 @@ class DabaxBase(object):
 
         self._dabax_repository = dabax_repository
         self._file_f0 = file_f0
-        self._file_f1f2 = file_CrossSec
-        self._file_CrossSec = file_f1f2
+        self._file_f1f2 = file_f1f2
+        self._file_CrossSec = file_CrossSec
 
     def set_dabax_repository(self, repo):
         self._dabax_repository = repo
@@ -139,7 +138,7 @@ class DabaxBase(object):
         symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
-            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol)
+            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol, verbose=verbose)
         else:
             # retrieve all entries
             filename = self.get_dabax_file(filename, verbose=verbose)
@@ -237,6 +236,60 @@ class DabaxBase(object):
 
     def __f0func(self, q, a1, a2, a3, a4, a5, a6, a7, a8, a9):
         return calculate_f0_from_f0coeff([a1, a2, a3, a4, a5, a6, a7, a8, a9], q)
+
+
+    ######################
+    # f1f2
+    ######################
+
+    def f1f2_extract(self, entry_name="Y3+", verbose=True):
+        filename = self.get_file_f1f2()
+        file1 = self.get_dabax_file(filename, verbose=verbose)
+        sf = SpecFile(file1)
+
+        flag_found = False
+
+        for index in range(len(sf)):
+            s1 = sf[index]
+            name1 = s1.scan_header_dict["S"]
+            name = ' '.join(name1.split())
+            if name.split(' ')[1] == entry_name:
+                flag_found = True
+                index_found = index
+
+        if not flag_found:
+            if verbose:
+                print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
+            return None
+
+        # energy
+        energy_in_eV = (sf[index_found].data)[0,:].copy()
+        if filename == 'f1f2_asf_Kissel.dat' or \
+            filename == 'f1f2_Chantler.dat':
+            if verbose: print('f1f2_extract: Changing Energy from keV to eV for DABAX file '+filename)
+            energy_in_eV *= 1e3
+
+        # f1f2
+        if filename == 'f1f2_asf_Kissel.dat':
+            f1 = sf[index_found].data[4,:].copy()
+            f2 = numpy.abs(sf[index_found].data[1,:].copy())
+        else:
+            f1 = sf[index_found].data[1,:].copy()
+            f2 = sf[index_found].data[2,:].copy()
+
+        return energy_in_eV, f1, f2
+
+    def f1f2_interpolate(self, entry_name, energy, verbose=True):
+
+        energy0, f1, f2 = self.f1f2_extract(entry_name, verbose=verbose)
+        f1_interpolated = 10 ** numpy.interp(numpy.log10(energy),
+                                            numpy.log10(energy0),
+                                            numpy.log10(f1))
+        f2_interpolated = 10 ** numpy.interp(numpy.log10(energy),
+                                            numpy.log10(energy0),
+                                            numpy.log10(f2))
+
+        return f1_interpolated, f2_interpolated
 
     ######################
     # miscellaneous
@@ -459,7 +512,7 @@ if __name__ == '__main__':
     #
     # f0
     #
-    if True:
+    if False:
         #
         # test f0 data for B3+
         #
@@ -484,7 +537,7 @@ if __name__ == '__main__':
     #
     # f0 another test
     #
-    if True:
+    if False:
         #
         # test f0 data for B3+
         #
@@ -511,7 +564,7 @@ if __name__ == '__main__':
              title="", show=1)
 
 
-    if True:
+    if False:
         #
         # misc
         #
@@ -529,6 +582,20 @@ if __name__ == '__main__':
 
         print("Density Si: ", dx.element_density("Si", verbose=0))
 
+    if True:
+
+        energy, f1, f2 = dx.f1f2_extract("Si")
+
+        energy_i = numpy.linspace(4000,15000,200)
+        f1_i, f2_i = dx.f1f2_interpolate("Si", energy=energy_i)
+        print(">>>>", energy.shape, f1.shape, f2.shape)
+        from srxraylib.plot.gol import plot
+        plot(energy, f1,
+             energy, f2,
+             energy_i, f1_i,
+             energy_i, f2_i,
+             xlog=True, ylog=True, title="f1f2 Si",
+             legend=['f1','f2','f1_i','f2_i'])
 
 
 

@@ -7,6 +7,7 @@ import scipy.constants as codata
 from silx.io.specfile import SpecFile
 from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
 from dabax.common_tools import bragg_metrictensor
+from dabax.common_tools import calculate_f0_from_f0coeff
 
 class DabaxXraylibDecorator(object):
 
@@ -212,3 +213,116 @@ class DabaxXraylibDecorator(object):
     #  F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #  F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #
+
+
+
+    def FiAndFii(self, Z, energy):
+        symbol = self.AtomicNumberToSymbol(Z)
+        f1, f2 = self.f1f2_interpolate(symbol, energy*1e3, verbose=0)
+        f1 -= Z
+        f2 *= -1.0
+        return f1,f2
+
+    def Fi(self, Z, energy):
+        return self.FiAndFii(Z, energy)[0]
+
+    def Fii(self, Z, energy):
+        return self.FiAndFii(Z, energy)[1]
+
+    def Crystal_F_H_StructureFactor(self,
+                                    crystal_id,
+                                    energy_in_kev,
+                                    millerH,
+                                    millerK,
+                                    millerL,
+                                    debyeWaller,
+                                    ratio_theta_thetaB=1.0):
+        energy = energy_in_kev * 1e3
+        wavelength = codata.h * codata.c / codata.e / energy * 1e10
+        # print(crystal_id["n_atom"])
+        atom = crystal_id['atom']
+        natom = len(atom)
+        list_fraction = [atom[i]['fraction'] for i in range(natom)]
+        list_x = [atom[i]['x'] for i in range(natom)]
+        list_y = [atom[i]['y'] for i in range(natom)]
+        list_z = [atom[i]['z'] for i in range(natom)]
+
+        F_H = numpy.zeros(numpy.array(energy).size, dtype=complex)
+
+        for i in range(natom):
+            atom_i = atom[i]
+            if (i > 0) and (atom_i['Zatom'] == Z_i) and (atom_i['charge'] == charge_i):
+                pass # avoid re-calculating f0 if inputs are identical to previous call
+            else:
+                Z_i = atom_i['Zatom']
+                charge_i = atom_i['charge']
+                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i, verbose=0)
+                if (millerH == 0 and millerK == 0 and millerL == 0):
+                    ratio = 0.0
+                else:
+                    angle = self.Bragg_angle(crystal_id, energy_in_kev,
+                                             millerH, millerK, millerL) * ratio_theta_thetaB
+                    ratio = numpy.sin(angle) / wavelength
+                f0_i = calculate_f0_from_f0coeff(coeffs, ratio)
+                Fi  = self.Fi(Z_i, energy_in_kev)
+                Fii = self.Fii(Z_i, energy_in_kev)
+
+            F_H += (f0_i + Fi - Fii * 1j) * list_fraction[i] * \
+                   numpy.exp(2j*numpy.pi*(millerH*list_x[i]+millerK*list_y[i]+millerL*list_z[i]))
+
+        return F_H * debyeWaller
+
+    # this is not in xraylib, but accelerates the calculation
+    def Crystal_F_0_F_H_F_H_bar_StructureFactor(self,
+                                    crystal_id,
+                                    energy_in_kev,
+                                    millerH,
+                                    millerK,
+                                    millerL,
+                                    debyeWaller,
+                                    ratio_theta_thetaB=1.0):
+        energy = energy_in_kev * 1e3
+        wavelength = codata.h * codata.c / codata.e / energy * 1e10
+        # print(crystal_id["n_atom"])
+        atom = crystal_id['atom']
+        natom = len(atom)
+        list_fraction = [atom[i]['fraction'] for i in range(natom)]
+        list_x = [atom[i]['x'] for i in range(natom)]
+        list_y = [atom[i]['y'] for i in range(natom)]
+        list_z = [atom[i]['z'] for i in range(natom)]
+
+        F_0 = numpy.zeros(numpy.array(energy).size, dtype=complex)
+        F_H = numpy.zeros(numpy.array(energy).size, dtype=complex)
+        F_H_bar = numpy.zeros(numpy.array(energy).size, dtype=complex)
+
+        for i in range(natom):
+            atom_i = atom[i]
+            if (i > 0) and (atom_i['Zatom'] == Z_i) and (atom_i['charge'] == charge_i):
+                pass # avoid re-calculating f0 if inputs are identical to previous call
+            else:
+                Z_i = atom_i['Zatom']
+                charge_i = atom_i['charge']
+                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i, verbose=0)
+                if (millerH == 0 and millerK == 0 and millerL == 0):
+                    ratio = 0.0
+                else:
+                    angle = self.Bragg_angle(crystal_id, energy_in_kev,
+                                             millerH, millerK, millerL) * ratio_theta_thetaB
+                    ratio = numpy.sin(angle) / wavelength
+                f0_i_zero = calculate_f0_from_f0coeff(coeffs, 0.0)
+                f0_i = calculate_f0_from_f0coeff(coeffs, ratio)
+                Fi  = self.Fi(Z_i, energy_in_kev)
+                Fii = self.Fii(Z_i, energy_in_kev)
+
+            F_0 += (f0_i_zero + Fi - Fii * 1j) * list_fraction[i] * debyeWaller
+
+            F_H += (f0_i + Fi - Fii * 1j) * list_fraction[i] * debyeWaller * \
+                   numpy.exp(2j*numpy.pi*(millerH*list_x[i]+millerK*list_y[i]+millerL*list_z[i]))
+
+            F_H_bar += (f0_i + Fi - Fii * 1j) * list_fraction[i] * debyeWaller * \
+                   numpy.exp(2j*numpy.pi*(-millerH*list_x[i]-millerK*list_y[i]-millerL*list_z[i]))
+
+        return F_0, F_H, F_H_bar
+
+
+

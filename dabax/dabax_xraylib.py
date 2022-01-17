@@ -61,3 +61,25 @@ if __name__ == "__main__":
     print("Z=23 is %s (DABAX)  %s (XRAYLIB)" % (dx.AtomicNumberToSymbol(23),xraylib.AtomicNumberToSymbol(23)))
     print("Density Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.ElementDensity(30),xraylib.ElementDensity(30)))
     print("AtWeight Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.AtomicWeight(30),xraylib.AtomicWeight(30)))
+
+
+    # crystal structure factors
+
+    print("Fi  dabax,xraylib: ",  dx.Fi (14,18.0), xraylib.Fi (14,18.0))
+    print("Fii dabax,xraylib: ", dx.Fii(14,18.0), xraylib.Fii(14,18.0))
+
+    # F0 = dx.Crystal_F_H_StructureFactor(siD,8.0,0,0,0,1.0,ratio_theta_thetaB=1.0)
+
+    dabax_all_F = dx.Crystal_F_0_F_H_F_H_bar_StructureFactor(siD,8.0,1,1,1,1.0,ratio_theta_thetaB=1.0)
+
+    print("F0 dabax, xraylib: ",
+          dx.Crystal_F_H_StructureFactor(siD,8.0,0,0,0,1.0,ratio_theta_thetaB=1.0), dabax_all_F[0],
+          xraylib.Crystal_F_H_StructureFactor(siX,8.0,0,0,0,1.0,1.0))
+
+    print("F111 dabax, xraylib: ",
+          dx.Crystal_F_H_StructureFactor     (siD,8.1,1,1,1,1.0,ratio_theta_thetaB=1.0), dabax_all_F[1],
+          xraylib.Crystal_F_H_StructureFactor(siX,8.1,1,1,1,1.0,1.0))
+
+    print("F-1-1-1 dabax, xraylib: ",
+          dx.Crystal_F_H_StructureFactor     (siD,8.1,-1,-1,-1,1.0,ratio_theta_thetaB=1.0), dabax_all_F[2],
+          xraylib.Crystal_F_H_StructureFactor(siX,8.1,-1,-1,-1,1.0,1.0))
