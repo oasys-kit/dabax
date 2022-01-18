@@ -176,53 +176,6 @@ class DabaxXraylibDecorator(object):
     def AtomicWeight(self, Z):
         return self.atomic_weights(self.AtomicNumberToSymbol(Z))
 
-    #
-    #
-    #  (used in xoppy_xraylib_util):
-    #
-    #   DONE:
-    #
-    #  xraylib.Crystal_GetCrystal(descriptor)
-    #  xraylib.Crystal_dSpacing(cryst, hh, kk, ll)
-    #  xraylib.Crystal_dSpacing
-    #  xraylib.CompoundParser(descriptor)
-    #  xraylib.SymbolToAtomicNumber(descriptor)
-    #  xraylib.AtomicNumberToSymbol(zi)
-    #  xraylib.ElementDensity(Z)
-    #  xraylib.AtomicWeight
-    #
-    #   TODO
-    #
-    #  xraylib.GetCompoundDataNISTList()
-    #  xraylib.GetCompoundDataNISTByName(DESCRIPTOR)
-    #  xraylib.GetCompoundDataNISTByIndex(DESCRIPTOR)
-    #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
-    #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
-    #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
-    #  xraylib.Fi(Z,1e-3*ienergy)
-    #  xraylib.Fii(Z,1e-3*ienergy)
-    #  xraylib.CS_Phot()
-    #  xraylib.CSb_Photo(Z,1e-3*ienergy)
-    #  xraylib.CSb_Total(Z,1e-3*ienergy)
-    #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
-    #  xraylib.CSb_Compt(Z,1e-3*ienergy)
-    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
-    #  F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #  F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #
-
-
-
-    def FiAndFii(self, Z, energy):
-        symbol = self.AtomicNumberToSymbol(Z)
-        f1, f2 = self.f1f2_interpolate(symbol, energy*1e3, verbose=0)
-        f1 -= Z
-        f2 *= -1.0
-        return f1,f2
-
     def Fi(self, Z, energy):
         return self.FiAndFii(Z, energy)[0]
 
@@ -272,7 +225,67 @@ class DabaxXraylibDecorator(object):
 
         return F_H * debyeWaller
 
-    # this is not in xraylib, but accelerates the calculation
+    def FF_Rayl(self, Z, q):
+
+        coeffs = self.f0_with_fractional_charge(Z, charge=0.0, verbose=0)
+        return calculate_f0_from_f0coeff(coeffs, q)
+
+
+    #
+    #
+    #  (used in xoppy_xraylib_util):
+    #
+    #   DONE:
+    #
+    #  xraylib.Crystal_GetCrystal(descriptor)
+    #  xraylib.Crystal_dSpacing(cryst, hh, kk, ll)
+    #  xraylib.Crystal_dSpacing
+    #  xraylib.CompoundParser(descriptor)
+    #  xraylib.SymbolToAtomicNumber(descriptor)
+    #  xraylib.AtomicNumberToSymbol(zi)
+    #  xraylib.ElementDensity(Z)
+    #  xraylib.AtomicWeight
+    #  xraylib.Fi(Z,1e-3*ienergy)
+    #  xraylib.Fii(Z,1e-3*ienergy)
+    #
+    #   TODO
+    #
+    #  FF_Rayl
+    #  xraylib.GetCompoundDataNISTList()
+    #  xraylib.GetCompoundDataNISTByName(DESCRIPTOR)
+    #  xraylib.GetCompoundDataNISTByIndex(DESCRIPTOR)
+    #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
+    #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
+    #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
+    #  xraylib.CS_Phot()
+    #  xraylib.CSb_Photo(Z,1e-3*ienergy)
+    #  xraylib.CSb_Total(Z,1e-3*ienergy)
+    #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
+    #  xraylib.CSb_Compt(Z,1e-3*ienergy)
+    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
+    #  F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+    #  F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+    #
+
+
+
+    #
+    # auxiliar methods
+    # there are not in xraylib, but accelerates the calculation
+    #
+
+    def FiAndFii(self, Z, energy):
+        symbol = self.AtomicNumberToSymbol(Z)
+        f1, f2 = self.f1f2_interpolate(symbol, energy*1e3, verbose=0)
+        f1 -= Z
+        f2 *= -1.0
+        return f1,f2
+
+
+
     def Crystal_F_0_F_H_F_H_bar_StructureFactor(self,
                                     crystal_id,
                                     energy_in_kev,
@@ -280,7 +293,7 @@ class DabaxXraylibDecorator(object):
                                     millerK,
                                     millerL,
                                     debyeWaller,
-                                    ratio_theta_thetaB=1.0):
+                                    rel_angle=1.0):
         energy = energy_in_kev * 1e3
         wavelength = codata.h * codata.c / codata.e / energy * 1e10
         # print(crystal_id["n_atom"])
@@ -303,12 +316,15 @@ class DabaxXraylibDecorator(object):
                 Z_i = atom_i['Zatom']
                 charge_i = atom_i['charge']
                 coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i, verbose=0)
+
+
                 if (millerH == 0 and millerK == 0 and millerL == 0):
                     ratio = 0.0
                 else:
                     angle = self.Bragg_angle(crystal_id, energy_in_kev,
-                                             millerH, millerK, millerL) * ratio_theta_thetaB
-                    ratio = numpy.sin(angle) / wavelength
+                                             millerH, millerK, millerL)
+                    ratio = numpy.sin(angle * rel_angle) / wavelength
+
                 f0_i_zero = calculate_f0_from_f0coeff(coeffs, 0.0)
                 f0_i = calculate_f0_from_f0coeff(coeffs, ratio)
                 Fi  = self.Fi(Z_i, energy_in_kev)

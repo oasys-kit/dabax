@@ -70,16 +70,19 @@ if __name__ == "__main__":
 
     # F0 = dx.Crystal_F_H_StructureFactor(siD,8.0,0,0,0,1.0,ratio_theta_thetaB=1.0)
 
-    dabax_all_F = dx.Crystal_F_0_F_H_F_H_bar_StructureFactor(siD,8.0,1,1,1,1.0,ratio_theta_thetaB=1.0)
+    dabax_all_F = dx.Crystal_F_0_F_H_F_H_bar_StructureFactor(siD,8.0,1,1,1,1.0,rel_angle=1.0)
 
     print("F0 dabax, xraylib: ",
-          dx.Crystal_F_H_StructureFactor(siD,8.0,0,0,0,1.0,ratio_theta_thetaB=1.0), dabax_all_F[0],
+          dx.Crystal_F_H_StructureFactor(siD,8.0,0,0,0,1.0,1.0), dabax_all_F[0],
           xraylib.Crystal_F_H_StructureFactor(siX,8.0,0,0,0,1.0,1.0))
 
     print("F111 dabax, xraylib: ",
-          dx.Crystal_F_H_StructureFactor     (siD,8.1,1,1,1,1.0,ratio_theta_thetaB=1.0), dabax_all_F[1],
+          dx.Crystal_F_H_StructureFactor     (siD,8.1,1,1,1,1.0,1.0), dabax_all_F[1],
           xraylib.Crystal_F_H_StructureFactor(siX,8.1,1,1,1,1.0,1.0))
 
     print("F-1-1-1 dabax, xraylib: ",
-          dx.Crystal_F_H_StructureFactor     (siD,8.1,-1,-1,-1,1.0,ratio_theta_thetaB=1.0), dabax_all_F[2],
+          dx.Crystal_F_H_StructureFactor     (siD,8.1,-1,-1,-1,1.0,1.0), dabax_all_F[2],
           xraylib.Crystal_F_H_StructureFactor(siX,8.1,-1,-1,-1,1.0,1.0))
+
+    print("FF_rayl dabax, xraylib: ",
+          dx.FF_Rayl(17, 2.2),xraylib.FF_Rayl(17, 2.2) )
