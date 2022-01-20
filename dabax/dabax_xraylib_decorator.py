@@ -2,7 +2,6 @@
 # dabax functions with the same interface as xraylib
 #
 import numpy
-# from orangecontrib.xoppy.util.xoppy_xraylib_util import bragg_metrictensor
 import scipy.constants as codata
 from silx.io.specfile import SpecFile
 from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
@@ -14,8 +13,7 @@ class DabaxXraylibDecorator(object):
     #########################
     # crystal
     #########################
-    def Crystal_GetCrystal(self, entry_name='YB66', filename='Crystals.dat',
-                           verbose=True):
+    def Crystal_GetCrystal(self, entry_name='YB66', filename='Crystals.dat'):
         """
         parse a complex crystal structure file into a dictionary (like xraylib.Crystal_GetCrystal('Si'))
 
@@ -25,7 +23,7 @@ class DabaxXraylibDecorator(object):
         """
         dabax_repository = self.get_dabax_repository()
 
-        file1 = self.get_dabax_file(filename, verbose=verbose)
+        file1 = self.get_dabax_file(filename)
 
         sf = SpecFile(file1)
 
@@ -131,11 +129,11 @@ class DabaxXraylibDecorator(object):
         return cryst
 
 
-    def Crystal_GetCrystalsList(self, verbose=True):
+    def Crystal_GetCrystalsList(self):
         """
         get crystal names from crystals.dat
         """
-        file1 = self.get_dabax_file('Crystals.dat', verbose=verbose)
+        file1 = self.get_dabax_file('Crystals.dat')
         sf = SpecFile(file1)
         crystals = []
         for index in range(len(sf)):
@@ -158,8 +156,8 @@ class DabaxXraylibDecorator(object):
     #
     #
     #
-    def CompoundParser(self, descriptor, verbose=True):
-        return self.compound_parser(descriptor, verbose=verbose)
+    def CompoundParser(self, descriptor):
+        return self.compound_parser(descriptor)
 
     #
     #
@@ -209,7 +207,7 @@ class DabaxXraylibDecorator(object):
             else:
                 Z_i = atom_i['Zatom']
                 charge_i = atom_i['charge']
-                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i, verbose=0)
+                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i)
                 if (millerH == 0 and millerK == 0 and millerL == 0):
                     ratio = 0.0
                 else:
@@ -227,7 +225,7 @@ class DabaxXraylibDecorator(object):
 
     def FF_Rayl(self, Z, q):
 
-        coeffs = self.f0_with_fractional_charge(Z, charge=0.0, verbose=0)
+        coeffs = self.f0_with_fractional_charge(Z, charge=0.0)
         return calculate_f0_from_f0coeff(coeffs, q)
 
 
@@ -247,6 +245,8 @@ class DabaxXraylibDecorator(object):
     #  xraylib.AtomicWeight
     #  xraylib.Fi(Z,1e-3*ienergy)
     #  xraylib.Fii(Z,1e-3*ienergy)
+    #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+    #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #
     #   TODO
     #
@@ -266,9 +266,6 @@ class DabaxXraylibDecorator(object):
     #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
     #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
     #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
-    #  F_0 = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #  F_H = xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
-    #
 
 
 
@@ -279,12 +276,10 @@ class DabaxXraylibDecorator(object):
 
     def FiAndFii(self, Z, energy):
         symbol = self.AtomicNumberToSymbol(Z)
-        f1, f2 = self.f1f2_interpolate(symbol, energy*1e3, verbose=0)
+        f1, f2 = self.f1f2_interpolate(symbol, energy*1e3)
         f1 -= Z
         f2 *= -1.0
         return f1,f2
-
-
 
     def Crystal_F_0_F_H_F_H_bar_StructureFactor(self,
                                     crystal_id,
@@ -315,7 +310,7 @@ class DabaxXraylibDecorator(object):
             else:
                 Z_i = atom_i['Zatom']
                 charge_i = atom_i['charge']
-                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i, verbose=0)
+                coeffs = self.f0_with_fractional_charge(Z_i, charge=charge_i)
 
 
                 if (millerH == 0 and millerK == 0 and millerL == 0):

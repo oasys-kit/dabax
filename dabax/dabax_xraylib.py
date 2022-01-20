@@ -3,8 +3,11 @@ from dabax.dabax_base import DabaxBase
 from dabax.dabax_xraylib_decorator import DabaxXraylibDecorator
 
 class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
+    """
+    Dabax decorated with xraylib interface (warning: not all xraylib functions are implemented)
+    """
     def __init__(self,
-                 dabax_repository="http://ftp.esrf.eu/pub/scisoft/DabaxFiles/",
+                 dabax_repository=None,
                  file_f0="f0_InterTables.dat",
                  file_f1f2="f1f2_Windt.dat",
                  file_CrossSec = "CrossSec_EPDL97.dat",
@@ -17,15 +20,9 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
                            file_CrossSec=file_CrossSec)
 
 if __name__ == "__main__":
+
     import xraylib
-
-    import socket
-    if socket.getfqdn().find("esrf") >= 0:
-        dx = DabaxXraylib(dabax_repository="http://ftp.esrf.fr/pub/scisoft/DabaxFiles/")
-    else:
-        dx = DabaxXraylib()
-
-    print(dx.info())
+    dx = DabaxXraylib()
 
     #
     # crystal tests
@@ -34,18 +31,18 @@ if __name__ == "__main__":
     print("DABAX crystal list: \n",        dx.Crystal_GetCrystalsList())
     print("XRAYLIB crystal list: \n", xraylib.Crystal_GetCrystalsList())
 
-    siD = dx.Crystal_GetCrystal('Si')
+    siD =      dx.Crystal_GetCrystal('Si')
     siX = xraylib.Crystal_GetCrystal('Si')
 
     print("DABAX crystal si: \n",        dx.Crystal_GetCrystal('Si'))
     print("XRAYLIB crystal si: \n", xraylib.Crystal_GetCrystal('Si'))
 
     print("Si 111 d-spacing: DABAX: %g, XRAYLIB: %g "% \
-          (dx.Crystal_dSpacing(siD,1,1,1),dx.Crystal_dSpacing(siX,1,1,1)))
+          (dx.Crystal_dSpacing(siD,1,1,1),xraylib.Crystal_dSpacing(siX,1,1,1)))
 
     print("Si 111 bragg angle at 10 keV [deg]: DABAX: %g, XRAYLIB: %g "% (\
           180 / numpy.pi * dx.Bragg_angle(siD,10, 1,1,1), \
-          180 / numpy.pi * dx.Bragg_angle(siX, 10, 1, 1, 1)))
+          180 / numpy.pi * xraylib.Bragg_angle(siX, 10, 1, 1, 1)))
 
     #
     # dabax vs xraylib tests
@@ -54,7 +51,7 @@ if __name__ == "__main__":
     # TODO: does not work for double parenthesis "Ga2(F(KI))3"
     for descriptor in ["H2O","Eu2H2.1O1.3","PO4", "Ca5(PO4)3.1F"]:
         print("\ncompound parsing for %s" % descriptor)
-        print("DABAX: ", dx.CompoundParser(descriptor))
+        print("DABAX: ",        dx.CompoundParser(descriptor))
         print("XRAYLIB: ", xraylib.CompoundParser(descriptor))
 
     print("Si is Z= %d (DABAX)  %d (XRAYLIB)" % (dx.SymbolToAtomicNumber("Si"),xraylib.SymbolToAtomicNumber("Si")))

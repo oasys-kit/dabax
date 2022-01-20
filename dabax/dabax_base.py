@@ -6,34 +6,51 @@ dabax: python module for processing remote files containing dabax
 
 import numpy
 import os
-
+import socket
 from urllib.request import urlretrieve
 from silx.io.specfile import SpecFile
 
-from dabax.common_tools import calculate_f0_from_f0coeff
+from dabax.common_tools import calculate_f0_from_f0coeff, f0_interpolate_coefficients
 from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
 from dabax.common_tools import parse_formula
 
-from scipy.optimize import curve_fit
-
 class DabaxBase(object):
     def __init__(self,
-                 dabax_repository="http://ftp.esrf.eu/pub/scisoft/DabaxFiles/",
+                 dabax_repository=None,
+                 verbose=False,
                  file_f0="f0_InterTables.dat",
                  file_f1f2="f1f2_Windt.dat",
                  file_CrossSec = "CrossSec_EPDL97.dat",
                  ):
 
         self._dabax_repository = dabax_repository
+        self._verbose = verbose
         self._file_f0 = file_f0
         self._file_f1f2 = file_f1f2
         self._file_CrossSec = file_CrossSec
+
+        if dabax_repository is None:
+            self._dabax_repository = self.get_dabax_default_repository()
+        else:
+            self._dabax_repository = dabax_repository
+
+    def get_dabax_default_repository(self):
+        if socket.getfqdn().find("esrf") >= 0:
+            return "http://ftp.esrf.fr/pub/scisoft/DabaxFiles/"
+        else:
+            return "http://ftp.esrf.eu/pub/scisoft/DabaxFiles/"
 
     def set_dabax_repository(self, repo):
         self._dabax_repository = repo
 
     def get_dabax_repository(self):
         return self._dabax_repository
+
+    def set_verbose(self, value=True):
+        self._verbose = value
+
+    def verbose(self):
+        return self._verbose
 
     def set_file_f0(self, filename):
         self._file_f0 = filename
@@ -73,13 +90,13 @@ class DabaxBase(object):
     #########################
     # common access tools
     #########################
-    def get_dabax_file(self, filename, verbose=True):
+    def get_dabax_file(self, filename):
         #
         # file exists in current directory
         #
         dabax_repository = self.get_dabax_repository()
         if os.path.exists(filename):
-            if verbose: print("Dabax file exists in local directory: %s " % filename)
+            if self.verbose(): print("Dabax file exists in local directory: %s " % filename)
             return filename
 
         #
@@ -91,7 +108,7 @@ class DabaxBase(object):
                                                  filename=filename,
                                                  reporthook=None,
                                                  data=None)
-                if verbose: print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
+                if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
                 return filename
             except:
                 raise Exception("Failed to download file %s from %s" % (filename, dabax_repository))
@@ -101,7 +118,7 @@ class DabaxBase(object):
         #
         f1 = os.path.join(dabax_repository, filename)
         if os.path.exists(f1):
-            if verbose: print("Dabax file exists in local directory: %s " % f1)
+            if self.verbose(): print("Dabax file exists in local directory: %s " % f1)
             return f1
 
         raise Exception(FileNotFoundError)
@@ -111,9 +128,9 @@ class DabaxBase(object):
     # f0
     #########################
 
-    def get_f0_coeffs_from_dabax_file(self, entry_name="Y3+", verbose=True):
+    def get_f0_coeffs_from_dabax_file(self, entry_name="Y3+"):
         filename = self.get_file_f0()
-        file1 = self.get_dabax_file(filename, verbose=verbose)
+        file1 = self.get_dabax_file(filename)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -132,16 +149,16 @@ class DabaxBase(object):
             return []
 
 
-    def f0_with_fractional_charge(self, Z, charge=0.0, verbose=True):
+    def f0_with_fractional_charge(self, Z, charge=0.0):
         filename = self.get_file_f0()
 
         symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
-            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol, verbose=verbose)
+            return self.get_f0_coeffs_from_dabax_file(entry_name=symbol)
         else:
             # retrieve all entries
-            filename = self.get_dabax_file(filename, verbose=verbose)
+            filename = self.get_dabax_file(filename)
             sf = SpecFile(filename)
             # retrieve all entries
             entries = []
@@ -175,76 +192,67 @@ class DabaxBase(object):
             for i in index_list:
                 coefficient_list.append((sf[i].data)[:, 0])
 
-            return self.__f0_interpolate_coefficients(charge, interesting_entries, charge_list, coefficient_list,
-                                                 verbose=verbose)
+            # return self.__f0_interpolate_coefficients(charge, interesting_entries, charge_list, coefficient_list)
+            return f0_interpolate_coefficients(charge, charge_list, coefficient_list)
 
-    def __f0_interpolate_coefficients(self, charge, interesting_entries, charge_list, coefficient_list, verbose=True):
-        #
-        # f0 data
-        #
+    #
+    #
+    #
 
-        nitems = len(interesting_entries)
+    def _f0_with_fractional_charge_get_entries(self, Z, charge=0.0):
+        filename = self.get_file_f0()
 
-        if nitems == 1:
-            print("Warning: no interpolating of charge: only one value available for ", interesting_entries[0])
-            return coefficient_list[0]
+        symbol = atomic_symbols()[Z]
 
-        charge_list_difference = []
-        for i in range(nitems):
-            charge_list_difference.append(charge_list[i] - charge)
+        if charge == 0.0:
+            return None
+        else:
+            # retrieve all entries
+            filename = self.get_dabax_file(filename)
+            sf = SpecFile(filename)
+            # retrieve all entries
+            entries = []
+            for index in range(len(sf)):
+                s1 = sf[index]
+                name = s1.scan_header_dict["S"]
+                entries.append(name.split('  ')[1])
 
-        charge_list_difference = numpy.array(charge_list_difference)  # convert to numpy array
+            # identify the entries that match the symbol
+            interesting_entries = []
+            charge_list = []
+            index_list = []
+            for i, entry in enumerate(entries):
+                if entry.find(symbol) == 0:
+                    if entry == symbol:
+                        interesting_entries.append(entry)
+                        charge_list.append(0.0)
+                        index_list.append(i)
+                    else:
+                        entry2 = entry.replace(symbol, '')
+                        try:
+                            charge_item = int(entry2[::-1])  # convert to integer the reversed string
+                            charge_list.append(charge_item)
+                            interesting_entries.append(entry)
+                            index_list.append(i)
+                        except:
+                            pass
 
-        if numpy.abs(charge_list_difference).min() == 0:
-            idx = numpy.abs(charge_list_difference).argmin()
-            if verbose: print("No interpolating needed: returning value for ", interesting_entries[idx])
-            return coefficient_list[idx]
+            # retrieve coefficients from these interesting entries
+            coefficient_list = []
+            for i in index_list:
+                coefficient_list.append((sf[i].data)[:, 0])
 
-        # get the closer charge values, no matter of the sign
-
-        sorted_indices = numpy.argsort(numpy.abs(charge_list_difference))
-        sorted_index_0 = sorted_indices[0]
-        sorted_index_1 = sorted_indices[1]
-        delta_data = charge_list[sorted_index_1] - charge_list[sorted_index_0]
-        delta_charge = charge - charge_list[sorted_index_0]
-        delta = delta_charge / delta_data
-        if verbose: print("Interpolating charge %g = %s + %g (%s - %s)" % (charge,
-                                                                           interesting_entries[sorted_index_0],
-                                                                           delta,
-                                                                           interesting_entries[sorted_index_1],
-                                                                           interesting_entries[sorted_index_0]))
-
-        # interpolate to get the f0 for the wanted charge
-
-        q = numpy.linspace(0.0, 2.0, 100)
-        f0_0 = calculate_f0_from_f0coeff(coefficient_list[sorted_index_0], q)
-        f0_1 = calculate_f0_from_f0coeff(coefficient_list[sorted_index_1], q)
-        f0 = f0_0 + delta * (f0_1 - f0_0)
-
-        #
-        # fit
-        #
-        try:
-            popt, pcov = curve_fit(self.__f0func, q, f0, p0=coefficient_list[sorted_index_0], maxfev=20000)
-            if verbose: print("fitted: ", popt)
-
-            return popt
-        except:
-            if verbose: print("Error: failed to fit coefficients for fractional charge. Returning the ones of ",
-                              interesting_entries[sorted_index_0])
-            return coefficient_list[sorted_index_0]
-
-    def __f0func(self, q, a1, a2, a3, a4, a5, a6, a7, a8, a9):
-        return calculate_f0_from_f0coeff([a1, a2, a3, a4, a5, a6, a7, a8, a9], q)
+            # return self.__f0_interpolate_coefficients(charge, interesting_entries, charge_list, coefficient_list)
+            return interesting_entries, charge_list, coefficient_list
 
 
     ######################
     # f1f2
     ######################
 
-    def f1f2_extract(self, entry_name="Y3+", verbose=True):
+    def f1f2_extract(self, entry_name="Y3+"):
         filename = self.get_file_f1f2()
-        file1 = self.get_dabax_file(filename, verbose=verbose)
+        file1 = self.get_dabax_file(filename)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -258,7 +266,7 @@ class DabaxBase(object):
                 index_found = index
 
         if not flag_found:
-            if verbose:
+            if self.verbose():
                 print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
             return None
 
@@ -266,7 +274,7 @@ class DabaxBase(object):
         energy_in_eV = (sf[index_found].data)[0,:].copy()
         if filename == 'f1f2_asf_Kissel.dat' or \
             filename == 'f1f2_Chantler.dat':
-            if verbose: print('f1f2_extract: Changing Energy from keV to eV for DABAX file '+filename)
+            if self.verbose(): print('f1f2_extract: Changing Energy from keV to eV for DABAX file '+filename)
             energy_in_eV *= 1e3
 
         # f1f2
@@ -279,15 +287,35 @@ class DabaxBase(object):
 
         return energy_in_eV, f1, f2
 
-    def f1f2_interpolate(self, entry_name, energy, verbose=True):
+    def f1f2_interpolate(self, entry_name, energy,
+                         method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
+                         ):
 
-        energy0, f1, f2 = self.f1f2_extract(entry_name, verbose=verbose)
-        f1_interpolated = 10 ** numpy.interp(numpy.log10(energy),
-                                            numpy.log10(energy0),
-                                            numpy.log10(f1))
-        f2_interpolated = 10 ** numpy.interp(numpy.log10(energy),
-                                            numpy.log10(energy0),
-                                            numpy.log10(f2))
+        energy0, f1, f2 = self.f1f2_extract(entry_name)
+        if method == 0:
+            f1_interpolated = numpy.interp(energy, energy0, f1)
+            f2_interpolated = numpy.interp(energy, energy0, f2)
+        elif method == 1:
+            f1_interpolated = 10 ** numpy.interp((energy),
+                                                 (energy0),
+                                                 numpy.log10(f1))
+            f2_interpolated = 10 ** numpy.interp((energy),
+                                                 (energy0),
+                                                 numpy.log10(f2))
+        elif method == 2:
+            f1_interpolated = numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 f1)
+            f2_interpolated = numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 f2)
+        elif method == 3:
+            f1_interpolated = 10 ** numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 numpy.log10(f1))
+            f2_interpolated = 10 ** numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 numpy.log10(f2))
 
         return f1_interpolated, f2_interpolated
 
@@ -297,7 +325,6 @@ class DabaxBase(object):
 
     def atomic_weights(self, descriptor,
                              filename="AtomicWeights.dat",
-                             verbose=True,
                              ):
         """
         ;       Returns atomic weights from DABAX.
@@ -321,7 +348,7 @@ class DabaxBase(object):
             descriptor_is_string = 0
 
         # access spec file
-        file1 = self.get_dabax_file(filename, verbose=verbose)
+        file1 = self.get_dabax_file(filename)
         sf = SpecFile(file1)
 
         out = []
@@ -356,7 +383,6 @@ class DabaxBase(object):
 
     def atomic_constants(self, descriptor,
                          filename="AtomicConstants.dat",
-                         verbose=True,
                          return_item=0,
                          return_label=None,
                          ):
@@ -430,7 +456,7 @@ class DabaxBase(object):
         if return_index == -1: raise Exception("Bad item index")
         # access spec file
 
-        file1 = self.get_dabax_file(filename, verbose=verbose)
+        file1 = self.get_dabax_file(filename)
 
         sf = SpecFile(file1)
 
@@ -460,15 +486,14 @@ class DabaxBase(object):
 
 
     def element_density(self, descriptor,
-                        filename="AtomicConstants.dat", verbose=True, ):
+                        filename="AtomicConstants.dat"):
 
-        return self.atomic_constants(descriptor, filename=filename, return_label="Density",
-                                     verbose=verbose)
+        return self.atomic_constants(descriptor, filename=filename, return_label="Density")
 
 
-    def compound_parser(self, descriptor, verbose=True):
+    def compound_parser(self, descriptor):
 
-        zetas, fatomic = parse_formula(formula=descriptor, verbose=verbose)
+        zetas, fatomic = parse_formula(formula=descriptor, verbose=self.verbose())
 
         elements = []
         atomic_weight = []
@@ -476,7 +501,7 @@ class DabaxBase(object):
 
         for i ,z in enumerate(zetas):
             symbol = atomic_symbols()[z]
-            atw = self.atomic_weights(symbol, verbose=verbose)
+            atw = self.atomic_weights(symbol)
             elements.append(z)
             atomic_weight.append(atw)
             massFractions.append(fatomic[i ] *atw)
@@ -500,19 +525,11 @@ class DabaxBase(object):
         return new_dict
 
 if __name__ == '__main__':
-    import socket
-    if socket.getfqdn().find("esrf") >= 0:
-        dx = DabaxBase(dabax_repository="http://ftp.esrf.fr/pub/scisoft/DabaxFiles/")
-    else:
-        dx = DabaxBase()
-
-    print(dx.info())
-
-
+    dx = DabaxBase()
     #
     # f0
     #
-    if False:
+    if True:
         #
         # test f0 data for B3+
         #
@@ -537,7 +554,7 @@ if __name__ == '__main__':
     #
     # f0 another test
     #
-    if False:
+    if True:
         #
         # test f0 data for B3+
         #
@@ -564,7 +581,7 @@ if __name__ == '__main__':
              title="", show=1)
 
 
-    if False:
+    if True:
         #
         # misc
         #
@@ -573,20 +590,20 @@ if __name__ == '__main__':
 
         print(atomic_symbols()[14], atomic_names()[14])
 
-        print("Si atomic mass", dx.atomic_constants("Si", return_item=2, verbose=0))
-        print("Si,Ge atomic mass", dx.atomic_constants(["Si", "Ge"], return_item=2, verbose=0))
-        print("Si,Co atomic mass", dx.atomic_constants(["Si", "Co"], return_label='AtomicMass', verbose=0))
+        print("Si atomic mass", dx.atomic_constants("Si", return_item=2))
+        print("Si,Ge atomic mass", dx.atomic_constants(["Si", "Ge"], return_item=2))
+        print("Si,Co atomic mass", dx.atomic_constants(["Si", "Co"], return_label='AtomicMass'))
 
         print("Z=27", atomic_symbols()[27])
         print("Ge Z=%d" % atomic_number("Ge"))
 
-        print("Density Si: ", dx.element_density("Si", verbose=0))
+        print("Density Si: ", dx.element_density("Si"))
 
     if True:
 
         energy, f1, f2 = dx.f1f2_extract("Si")
 
-        energy_i = numpy.linspace(4000,15000,200)
+        energy_i = numpy.linspace(10,15000,200)
         f1_i, f2_i = dx.f1f2_interpolate("Si", energy=energy_i)
         print(">>>>", energy.shape, f1.shape, f2.shape)
         from srxraylib.plot.gol import plot
@@ -595,10 +612,25 @@ if __name__ == '__main__':
              energy_i, f1_i,
              energy_i, f2_i,
              xlog=True, ylog=True, title="f1f2 Si",
-             legend=['f1','f2','f1_i','f2_i'])
+             legend=['f1','f2','f1_i','f2_i'],
+             marker=[None,None,'+','+'],
+             linestyle=[None,None,'',''])
 
 
+    if True: # used to create f0_xop_with_fractional_charge_data() in common_tools
+        filename = dx.get_file_f0()
+        file1 = dx.get_dabax_file(filename)
+        sf = SpecFile(file1)
+        for Z in range(1,99):
+            interesting_entries, charge_list, coefficient_list = dx._f0_with_fractional_charge_get_entries(Z, charge=1)
 
+            for i,iel in enumerate(coefficient_list):
+                coefficient_list[i] = iel.tolist()
 
+            print("    a.append({'Z':",Z,",'charge_list':",charge_list,",'coefficient_list':",coefficient_list,"})" )
 
-
+    if True:
+        from common_tools import f0_xop_with_fractional_charge
+        print("f0 coeffs for Z=14 charge=1.5 DABAX/common_tools: ",
+              dx.f0_with_fractional_charge(14, charge=1.5),
+              f0_xop_with_fractional_charge(14, charge=1.5),)
