@@ -11,13 +11,15 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
                  file_f0="f0_InterTables.dat",
                  file_f1f2="f1f2_Windt.dat",
                  file_CrossSec = "CrossSec_EPDL97.dat",
+                 file_Crystals="Crystals.dat",
                  ):
 
         DabaxBase.__init__(self,
                            dabax_repository=dabax_repository,
                            file_f0=file_f0,
                            file_f1f2=file_f1f2,
-                           file_CrossSec=file_CrossSec)
+                           file_CrossSec=file_CrossSec,
+                           file_Crystals=file_Crystals)
 
 if __name__ == "__main__":
 

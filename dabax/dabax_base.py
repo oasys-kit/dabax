@@ -21,6 +21,7 @@ class DabaxBase(object):
                  file_f0="f0_InterTables.dat",
                  file_f1f2="f1f2_Windt.dat",
                  file_CrossSec = "CrossSec_EPDL97.dat",
+                 file_Crystals="Crystals.dat",
                  ):
 
         self._dabax_repository = dabax_repository
@@ -28,6 +29,7 @@ class DabaxBase(object):
         self._file_f0 = file_f0
         self._file_f1f2 = file_f1f2
         self._file_CrossSec = file_CrossSec
+        self._file_Crystals = file_Crystals
 
         if dabax_repository is None:
             self._dabax_repository = self.get_dabax_default_repository()
@@ -70,12 +72,19 @@ class DabaxBase(object):
     def get_file_CrossSec(self):
         return self._file_CrossSec
 
+    def set_file_Crystals(self, filename):
+        self._file_Crystals = filename
+
+    def get_file_Crystals(self):
+        return self._file_Crystals
+
     def info(self):
         txt = "################  DABAX info ###########\n"
         txt += "dabax repository: %s\n" % self.get_dabax_repository()
         txt += "dabax f0 file: %s\n" % self.get_file_f0()
         txt += "dabax f1f2 file: %s\n" % self.get_file_f1f2()
         txt += "dabax CrossSec file: %s\n" % self.get_file_CrossSec()
+        txt += "dabax Crystals file: %s\n" % self.get_file_Crystals()
         txt += "########################################\n"
         return txt
 

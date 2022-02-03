@@ -13,7 +13,7 @@ class DabaxXraylibDecorator(object):
     #########################
     # crystal
     #########################
-    def Crystal_GetCrystal(self, entry_name='YB66', filename='Crystals.dat'):
+    def Crystal_GetCrystal(self, entry_name='YB66'):
         """
         parse a complex crystal structure file into a dictionary (like xraylib.Crystal_GetCrystal('Si'))
 
@@ -22,6 +22,8 @@ class DabaxXraylibDecorator(object):
         return a dictionary containing crystal infomation
         """
         dabax_repository = self.get_dabax_repository()
+
+        filename = self.get_file_Crystals()
 
         file1 = self.get_dabax_file(filename)
 
@@ -133,7 +135,7 @@ class DabaxXraylibDecorator(object):
         """
         get crystal names from crystals.dat
         """
-        file1 = self.get_dabax_file('Crystals.dat')
+        file1 = self.get_dabax_file(self.get_file_Crystals())
         sf = SpecFile(file1)
         crystals = []
         for index in range(len(sf)):
