@@ -329,6 +329,91 @@ class DabaxBase(object):
         return f1_interpolated, f2_interpolated
 
     ######################
+    # crosssec
+    ######################
+
+    def crosssec_extract(self, entry_name="Si", partial='TotalCrossSection[barn/atom]'):
+        filename = self.get_file_CrossSec()
+        file1 = self.get_dabax_file(filename)
+        sf = SpecFile(file1)
+
+        flag_found = False
+
+        for index in range(len(sf)):
+            s1 = sf[index]
+            name1 = s1.scan_header_dict["S"]
+            name = ' '.join(name1.split())
+            if name.split(' ')[1] == entry_name:
+                flag_found = True
+                index_found = index
+
+        if not flag_found:
+            if self.verbose():
+                print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
+            return None
+
+        data = sf[index_found].data
+        labels = sf[index_found].labels
+
+        energy_column_index = -1
+        for i in range(len(labels)):
+            if 'PhotonEnergy' in labels[i]:
+                energy_column_index = i
+        if energy_column_index == -1:
+            raise Exception("Column with PhotonEnergy not found in scan %d of %s" % (index_found, file1))
+
+        cs_column_index = -1
+        for i in range(len(labels)):
+            if partial in labels[i]:
+                cs_column_index = i
+        if cs_column_index == -1:
+            raise Exception("Column with %s not found in scan %d of %s" % (partial, index_found, file1))
+
+        energy = data[energy_column_index, :].copy()
+        cs = data[cs_column_index, :].copy()
+
+        # print("\n>>>>")
+        if '[EV]' in labels[energy_column_index].upper():
+            pass
+        elif '[KEV]' in labels[energy_column_index].upper():
+            energy *= 1e3
+            # print(">>> energy changed from keV to eV")
+        elif '[MEV]' in labels[energy_column_index].upper():
+            energy *= 1e6
+            # print(">>> energy changed from MeV to eV")
+
+        # print(">>>> %s (col %d)\n     %s (col %d): " % (labels[energy_column_index], energy_column_index, labels[cs_column_index], cs_column_index))
+
+        return energy, cs
+
+    def crosssec_interpolate(self, entry_name, energy,
+                         method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
+                         ):
+
+        out = self.crosssec_extract(entry_name)
+        if out is None:
+            raise Exception("Descriptor %s not in file %s" % (entry_name, self.get_file_CrossSec()))
+        else:
+            energy0, cs = out
+
+        if method == 0:
+            cs_interpolated = numpy.interp(energy, energy0, cs)
+        elif method == 1:
+            cs_interpolated = 10 ** numpy.interp((energy),
+                                                 (energy0),
+                                                 numpy.log10(cs))
+        elif method == 2:
+            cs_interpolated = numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 cs)
+        elif method == 3:
+            cs_interpolated = 10 ** numpy.interp(numpy.log10(energy),
+                                                 numpy.log10(energy0),
+                                                 numpy.log10(cs))
+
+        return cs_interpolated
+
+    ######################
     # miscellaneous
     ######################
 
@@ -538,7 +623,7 @@ if __name__ == '__main__':
     #
     # f0
     #
-    if True:
+    if False:
         #
         # test f0 data for B3+
         #
@@ -563,7 +648,7 @@ if __name__ == '__main__':
     #
     # f0 another test
     #
-    if True:
+    if False:
         #
         # test f0 data for B3+
         #
@@ -590,7 +675,7 @@ if __name__ == '__main__':
              title="", show=1)
 
 
-    if True:
+    if False:
         #
         # misc
         #
@@ -608,8 +693,7 @@ if __name__ == '__main__':
 
         print("Density Si: ", dx.element_density("Si"))
 
-    if True:
-
+    if False:
         energy, f1, f2 = dx.f1f2_extract("Si")
 
         energy_i = numpy.linspace(10,15000,200)
@@ -626,7 +710,7 @@ if __name__ == '__main__':
              linestyle=[None,None,'',''])
 
 
-    if True: # used to create f0_xop_with_fractional_charge_data() in common_tools
+    if False: # used to create f0_xop_with_fractional_charge_data() in common_tools
         filename = dx.get_file_f0()
         file1 = dx.get_dabax_file(filename)
         sf = SpecFile(file1)
@@ -638,8 +722,26 @@ if __name__ == '__main__':
 
             print("    a.append({'Z':",Z,",'charge_list':",charge_list,",'coefficient_list':",coefficient_list,"})" )
 
-    if True:
+    if False:
         from common_tools import f0_xop_with_fractional_charge
         print("f0 coeffs for Z=14 charge=1.5 DABAX/common_tools: ",
               dx.f0_with_fractional_charge(14, charge=1.5),
               f0_xop_with_fractional_charge(14, charge=1.5),)
+
+
+    if True:
+        energy, cs = dx.crosssec_extract("Si")
+
+        energy_i = numpy.linspace(10,15000,200)
+        cs_i = dx.crosssec_interpolate("Si", energy=energy_i)
+        print(">>>>", energy.shape, cs.shape)
+        from srxraylib.plot.gol import plot
+        plot(energy, cs,
+             energy_i, cs_i,
+             xlog=True, ylog=True, title="crosssec Si",
+             legend=['cs','cs_i'],
+             marker=[None,'+'],
+             linestyle=[None,''])
+
+
+        print(">>>> cs of Si at 10 kev %g barn/atom ", dx.crosssec_interpolate("Si", energy=50000.0))

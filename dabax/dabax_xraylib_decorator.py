@@ -230,13 +230,50 @@ class DabaxXraylibDecorator(object):
         coeffs = self.f0_with_fractional_charge(Z, charge=0.0)
         return calculate_f0_from_f0coeff(coeffs, q)
 
+    def CSb_Total(self, Z, energy):
+        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3)
+
+    def CS_Total(self, Z, energy):
+        return self.CSb_Total(Z, energy) / (self.AtomicWeight(Z) / codata.Avogadro * 1e24)
+
+    def CSb_Total_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.crosssec_interpolate(self.AtomicNumberToSymbol(cp["Elements"][i]), energy * 1e3) * \
+                   cp["massFractions"][i]
+        return out
+
+    def CS_Total_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor)
+        return self.CSb_Total_CP(descriptor, energy) / (cp["molarMass"] / codata.Avogadro * 1e24)
+
+    def Refractive_Index_Re(self, descriptor, energy, density):
+        cp = self.compound_parser(descriptor)
+        KD = 4.15179082788e-4  # TODO: recalculate with codata....
+        rv = 0.0
+        for i in range(cp["nElements"]):
+            Z = cp["Elements"][i]
+            rv += cp["massFractions"][i] * KD * (Z + self.Fi(Z, energy)) / \
+                self.AtomicWeight(Z) / energy / energy
+        return (1 - rv * density)
+
+    def Refractive_Index_Im(self, descriptor, energy, density):
+        cp = self.compound_parser(descriptor)
+        rv = 0.0
+        for i in range(cp["nElements"]):
+            Z = cp["Elements"][i]
+            rv += self.CS_Total(Z, energy) * cp["massFractions"][i]
+        # /*9.8663479e-9 is calculated as planck's constant * speed of light / 4Pi */
+        # return rv * density * 9.8663479e-9 / E;
+        return rv * density * 9.8663479e-9 / energy
 
     #
     #
-    #  (used in xoppy_xraylib_util):
-    #
     #   DONE:
     #
+    #
+    #  (used in xoppy_xraylib_util):
     #  xraylib.Crystal_GetCrystal(descriptor)
     #  xraylib.Crystal_dSpacing(cryst, hh, kk, ll)
     #  xraylib.Crystal_dSpacing
@@ -250,24 +287,30 @@ class DabaxXraylibDecorator(object):
     #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #
+    #  (used in power/power3d)
+    #
+    #  xraylib.CS_Total(Z,1e-3*ienergy)
+    #  xraylib.CSb_Total(Z,1e-3*ienergy)
+    #  xraylib.CS_Total_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
+    #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
+    #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
+    #
     #   TODO
     #
     #  FF_Rayl
     #  xraylib.GetCompoundDataNISTList()
     #  xraylib.GetCompoundDataNISTByName(DESCRIPTOR)
     #  xraylib.GetCompoundDataNISTByIndex(DESCRIPTOR)
-    #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
-    #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
     #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
     #  xraylib.CS_Phot()
     #  xraylib.CSb_Photo(Z,1e-3*ienergy)
-    #  xraylib.CSb_Total(Z,1e-3*ienergy)
     #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
     #  xraylib.CSb_Compt(Z,1e-3*ienergy)
     #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
     #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
     #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
+
 
 
 
@@ -279,7 +322,8 @@ class DabaxXraylibDecorator(object):
     def FiAndFii(self, Z, energy):
         symbol = self.AtomicNumberToSymbol(Z)
         f1, f2 = self.f1f2_interpolate(symbol, energy*1e3)
-        f1 -= Z
+        if self.get_file_f1f2() in ['f1f2_Windt.dat','f1f2_Henke.dat','f1f2_EPDL97.dat','f1f2_Chantler.dat','f1f2_asf_Kissel.dat']:
+            f1 -= Z
         f2 *= -1.0
         return f1,f2
 
