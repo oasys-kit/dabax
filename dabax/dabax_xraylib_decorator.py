@@ -11,7 +11,7 @@ from dabax.common_tools import calculate_f0_from_f0coeff
 class DabaxXraylibDecorator(object):
 
     #########################
-    # crystal
+    # crystals
     #########################
     def Crystal_GetCrystal(self, entry_name='YB66'):
         """
@@ -155,33 +155,6 @@ class DabaxXraylibDecorator(object):
         wavelength = codata.h * codata.c / codata.e / (E_keV * 1e3) * 1e10  # in A
         return numpy.arcsin(wavelength / 2 / dspacing)
 
-    #
-    #
-    #
-    def CompoundParser(self, descriptor):
-        return self.compound_parser(descriptor)
-
-    #
-    #
-    #
-    def SymbolToAtomicNumber(self, symbol):
-        return atomic_number(symbol)
-
-    def AtomicNumberToSymbol(self, Z):
-        return atomic_symbols()[Z]
-
-    def ElementDensity(self, Z):
-        return self.element_density(self.AtomicNumberToSymbol(Z))
-
-    def AtomicWeight(self, Z):
-        return self.atomic_weights(self.AtomicNumberToSymbol(Z))
-
-    def Fi(self, Z, energy):
-        return self.FiAndFii(Z, energy)[0]
-
-    def Fii(self, Z, energy):
-        return self.FiAndFii(Z, energy)[1]
-
     def Crystal_F_H_StructureFactor(self,
                                     crystal_id,
                                     energy_in_kev,
@@ -225,29 +198,135 @@ class DabaxXraylibDecorator(object):
 
         return F_H * debyeWaller
 
+    #########################
+    #  misc
+    #########################
+    def CompoundParser(self, descriptor):
+        return self.compound_parser(descriptor)
+
+    def SymbolToAtomicNumber(self, symbol):
+        return atomic_number(symbol)
+
+    def AtomicNumberToSymbol(self, Z):
+        return atomic_symbols()[Z]
+
+    def ElementDensity(self, Z):
+        return self.element_density(self.AtomicNumberToSymbol(Z))
+
+    def AtomicWeight(self, Z):
+        return self.atomic_weights(self.AtomicNumberToSymbol(Z))
+
+    #########################
+    #  scattering functions
+    #########################
+    def Fi(self, Z, energy):
+        return self.FiAndFii(Z, energy)[0]
+
+    def Fii(self, Z, energy):
+        return self.FiAndFii(Z, energy)[1]
+
     def FF_Rayl(self, Z, q):
 
         coeffs = self.f0_with_fractional_charge(Z, charge=0.0)
         return calculate_f0_from_f0coeff(coeffs, q)
 
+    #########################
+    #  cross sections
+    #########################
+
+    # main (barns)
     def CSb_Total(self, Z, energy):
-        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3)
+        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
+                                         partial='TotalCrossSection[barn/atom]',)
+
+    def CSb_Photo(self, Z, energy):
+        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
+                                         partial='PhotoElectric[barn/atom]',)
+    def CSb_Rayl(self, Z, energy):
+        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
+                                         partial='Rayleigh(coherent)[barn/atom]',)
+
+    def CSb_Compt(self, Z, energy):
+        return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
+                                         partial='Compton(incoherent)[barn/atom]',)
+
+    # in cm2/g
 
     def CS_Total(self, Z, energy):
-        return self.CSb_Total(Z, energy) / (self.AtomicWeight(Z) / codata.Avogadro * 1e24)
+        return self.CSb_Total(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
 
-    def CSb_Total_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor)
-        out = 0.0
-        for i in range(cp["nElements"]):
-            out += self.crosssec_interpolate(self.AtomicNumberToSymbol(cp["Elements"][i]), energy * 1e3) * \
-                   cp["massFractions"][i]
-        return out
+    def CS_Photo(self, Z, energy):
+        return self.CSb_Photo(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
+
+    def CS_Rayl(self, Z, energy):
+        return self.CSb_Rayl(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
+
+    def CS_Compt(self, Z, energy):
+        return self.CSb_Compt(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
+
+
+    # for compounds
+
 
     def CS_Total_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor)
-        return self.CSb_Total_CP(descriptor, energy) / (cp["molarMass"] / codata.Avogadro * 1e24)
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CS_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
 
+    def CSb_Total_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CSb_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CS_Photo_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CS_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CSb_Photo_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CSb_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CS_Rayl_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CS_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CSb_Rayl_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CSb_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CS_Compt_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CS_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    def CSb_Compt_CP(self, descriptor, energy):
+        cp = self.compound_parser(descriptor,)
+        out = 0.0
+        for i in range(cp["nElements"]):
+            out += self.CSb_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
+        return out
+
+    #########################
+    #  refractive index
+    #########################
     def Refractive_Index_Re(self, descriptor, energy, density):
         cp = self.compound_parser(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
@@ -267,6 +346,66 @@ class DabaxXraylibDecorator(object):
         # /*9.8663479e-9 is calculated as planck's constant * speed of light / 4Pi */
         # return rv * density * 9.8663479e-9 / E;
         return rv * density * 9.8663479e-9 / energy
+
+    #
+    # NIST compounds
+    #
+
+    def GetCompoundDataNISTList(self):
+        file1 = self.get_dabax_file("CompoundsNIST.dat")
+        sf = SpecFile(file1)
+
+        list1 = []
+        for index in range(len(sf)):
+            list1.append(sf[index].scan_header_dict["Uname"])
+
+        return list1
+
+    def GetCompoundDataNISTByIndex(self, index_found):
+        file1 = self.get_dabax_file("CompoundsNIST.dat")
+        sf = SpecFile(file1)
+
+        s1 = sf[index_found]
+        data = s1.data
+
+        name = s1.scan_header_dict["Uname"]
+        nElements = int(s1.scan_header_dict["UnElements"])
+        density = float(s1.scan_header_dict["Udensity"])
+
+        print("name: **" + name + "**")
+        print("nElements: %d" % nElements)
+        print("density: %g" % density)
+
+        Elements = []
+        massFractions = []
+        for i in range(nElements):
+            Elements.append(int(data[0][i]))
+            massFractions.append(data[1][i])
+
+        return {"name": name, 'nElements': nElements, 'density': density, 'Elements': Elements,
+                'massFractions': massFractions}
+
+    def GetCompoundDataNISTByName(self, entry_name):
+        file1 = self.get_dabax_file("CompoundsNIST.dat")
+        sf = SpecFile(file1)
+
+        flag_found = False
+
+        for index in range(len(sf)):
+            s1 = sf[index]
+            name1 = s1.scan_header_dict["S"]
+            name = ' '.join(name1.split())
+            if name.split(' ')[1] == entry_name:
+                flag_found = True
+                index_found = index
+
+        if not flag_found:
+            if self.verbose():
+                print("Entry name %s not found in DABAX file: %s" % (entry_name, "CompoundsNIST.dat"))
+            return None
+
+        return self.GetCompoundDataNISTByIndex(index_found)
+
 
     #
     #
@@ -291,32 +430,42 @@ class DabaxXraylibDecorator(object):
     #
     #  xraylib.CS_Total(Z,1e-3*ienergy)
     #  xraylib.CSb_Total(Z,1e-3*ienergy)
-    #  xraylib.CS_Total_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Total_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CS_Total_CP(Z,1e-3*ienergy)
+    #  xraylib.CSb_Total_CP(Z,1e-3*ienergy)
     #  xraylib.Refractive_Index_Re(descriptor, energy_in_keV, density)
     #  xraylib.Refractive_Index_Im(descriptor, energy_in_keV, density)
     #
-    #   TODO
-    #
-    #  FF_Rayl
+
+    #  (used in calc_cross_sec)
+    #  xraylib.CS_Phot()
+    #  xraylib.CSb_Photo(Z,1e-3*ienergy)
+    #  xraylib.CS_Phot_CP()
+    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CS_Rayl(Z,1e-3*ienergy)
+    #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
+    #  xraylib.CS_Rayl_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CS_Compt(Z,1e-3*ienergy)
+    #  xraylib.CSb_Compt(Z,1e-3*ienergy)
+    #  xraylib.CS_Compt_CP(descriptor,1e-3*ienergy)
+    #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
     #  xraylib.GetCompoundDataNISTList()
     #  xraylib.GetCompoundDataNISTByName(DESCRIPTOR)
     #  xraylib.GetCompoundDataNISTByIndex(DESCRIPTOR)
+
+    #
+    #   TODO
+    #
     #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
-    #  xraylib.CS_Phot()
-    #  xraylib.CSb_Photo(Z,1e-3*ienergy)
-    #  xraylib.CSb_Rayl(Z,1e-3*ienergy)
-    #  xraylib.CSb_Compt(Z,1e-3*ienergy)
-    #  xraylib.CSb_Photo_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Rayl_CP(descriptor,1e-3*ienergy)
-    #  xraylib.CSb_Compt_CP(descriptor,1e-3*ienergy)
+
 
 
 
 
     #
     # auxiliar methods
-    # there are not in xraylib, but accelerates the calculation
+    # there are not in xraylib, but accelerate the calculation
     #
 
     def FiAndFii(self, Z, energy):

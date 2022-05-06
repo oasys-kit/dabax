@@ -26,7 +26,7 @@ if __name__ == "__main__":
     import xraylib
     dx = DabaxXraylib()
 
-    if True:
+    if False:
         #
         # dabax vs xraylib tests
         #
@@ -80,6 +80,26 @@ if __name__ == "__main__":
         print("Density Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.ElementDensity(30),xraylib.ElementDensity(30)))
         print("AtWeight Z=30 %g (DABAX)  %g (XRAYLIB)" % (dx.AtomicWeight(30),xraylib.AtomicWeight(30)))
 
+
+        #
+        # NIST compounds
+        #
+
+        nist_x = xraylib.GetCompoundDataNISTList()
+        nist_d = dx.GetCompoundDataNISTList()
+        for i in range(len(nist_x)):
+            print(nist_d[i], nist_x[i])
+            a_d =      dx.GetCompoundDataNISTByIndex(i)
+            a_x = xraylib.GetCompoundDataNISTByIndex(i)
+            print("\n\n\n", i, "\n", a_d, "\n", a_x,)
+            name_x = a_x["name"]
+            name_d = a_d["name"]
+
+            print(name_d, name_x)
+            b_d =      dx.GetCompoundDataNISTByName(name_d)
+            b_x = xraylib.GetCompoundDataNISTByName(name_x)
+            print("\n", b_d, "\n", b_x,)
+
         #
         # scattering factors
         #
@@ -110,16 +130,41 @@ if __name__ == "__main__":
         # cross sections
         #
 
-        print("CSb_Total Si dabax,xraylib: ",  dx.CSb_Total (14,18.0), xraylib.CSb_Total (14,18.0))
-        print("CS_Total Si dabax,xraylib: ", dx.CS_Total(14, 18.0), xraylib.CS_Total(14, 18.0))
-
         from dabax.dabax_files import dabax_crosssec_files
+
         for file in dabax_crosssec_files():
             dx1 = DabaxXraylib(file_CrossSec=file)
-            print("CSb_Total_CP  dabax (%s): %g ,xraylib: %g" % (file, dx1.CSb_Total_CP ("SiO2",18.0), xraylib.CSb_Total_CP ("SiO2",18.0)))
+            print(">>>>>>>>>>>>>>>  file: ", file)
+            try:
+                print("CSb_Total Si dabax,xraylib: ",  dx1.CSb_Total(14, 18.0), xraylib.CSb_Total(14, 18.0))
+                print("CSb_Photo Si dabax,xraylib: ",  dx1.CSb_Photo(14,18.0),  xraylib.CSb_Photo(14,18.0))
+                print("CSb_Rayl  Si dabax,xraylib: ",  dx1.CSb_Rayl (14,18.0),  xraylib.CSb_Rayl (14,18.0))
+                print("CSb_Compt Si dabax,xraylib: ",  dx1.CSb_Compt(14,18.0),  xraylib.CSb_Compt(14,18.0))
+
+                print("CS_Total Si dabax,xraylib: ",  dx1.CS_Total(14, 18.0), xraylib.CS_Total(14, 18.0))
+                print("CS_Photo Si dabax,xraylib: ",  dx1.CS_Photo(14,18.0),  xraylib.CS_Photo(14,18.0))
+                print("CS_Rayl  Si dabax,xraylib: ",  dx1.CS_Rayl (14,18.0),  xraylib.CS_Rayl (14,18.0))
+                print("CS_Compt Si dabax,xraylib: ",  dx1.CS_Compt(14,18.0),  xraylib.CS_Compt(14,18.0))
+            except:
+                print("!!!!!!!!!!Errors with file", file)
 
 
-        print("CS_Total Be  dabax,xraylib: ", dx.CS_Total(4, 18.0), xraylib.CS_Total(4, 18.0))
+        for file in dabax_crosssec_files():
+            dx1 = DabaxXraylib(file_CrossSec=file)
+            print(">>>>>>>>>>>>>>>  file: ", file)
+
+            try:
+                print("CSb_Total SiO2 dabax,xraylib: ",  dx1.CSb_Total_CP("SiO2", 18.0), xraylib.CSb_Total_CP("SiO2", 18.0))
+                print("CSb_Photo SiO2 dabax,xraylib: ",  dx1.CSb_Photo_CP("SiO2",18.0),  xraylib.CSb_Photo_CP("SiO2",18.0))
+                print("CSb_Rayl  SiO2 dabax,xraylib: ",   dx1.CSb_Rayl_CP("SiO2",18.0),   xraylib.CSb_Rayl_CP("SiO2",18.0))
+                print("CSb_Compt SiO2 dabax,xraylib: ",  dx1.CSb_Compt_CP("SiO2",18.0),  xraylib.CSb_Compt_CP("SiO2",18.0))
+
+                print("CS_Total SiO2 dabax,xraylib: ",  dx1.CS_Total_CP("SiO2", 18.0), xraylib.CS_Total_CP("SiO2", 18.0))
+                print("CS_Photo SiO2 dabax,xraylib: ",  dx1.CS_Photo_CP("SiO2",18.0),  xraylib.CS_Photo_CP("SiO2",18.0))
+                print("CS_Rayl  SiO2 dabax,xraylib: ",   dx1.CS_Rayl_CP("SiO2",18.0),   xraylib.CS_Rayl_CP("SiO2",18.0))
+                print("CS_Compt SiO2 dabax,xraylib: ",  dx1.CS_Compt_CP("SiO2",18.0),  xraylib.CS_Compt_CP("SiO2",18.0))
+            except:
+                print("!!!!!!!!!!Errors with file", file)
 
 
         #
@@ -134,3 +179,8 @@ if __name__ == "__main__":
         r1 = dx.Refractive_Index_Re("Be", energies, dens)
         for i,energy in enumerate(energies):
             print("   delta @ %g keV, dabax: %g ,xraylib: %g" % (energy, 1-r1[i], 1-xraylib.Refractive_Index_Re ("Be",energy, dens)))
+
+    else:
+        pass
+
+
