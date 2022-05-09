@@ -16,9 +16,9 @@ def dabax_f1f2_files():
 def dabax_crosssec_files():
     return ["CrossSec_EPDL97.dat",
             "CrossSec_XCOM.dat",
-            "CrossSec_NISTxaamdi.dat",
             "CrossSec_BrennanCowan.dat",
             "CrossSec_StormIsrael.dat",
             "CrossSec_McMaster.dat",
-            "CrossSec_PE_Scofield.dat",
+            # "CrossSec_NISTxaamdi.dat",   # they do not contain partial cross sections (compton, rayl, photo)
+            # "CrossSec_PE_Scofield.dat",   # they do not contain partial cross sections (compton, rayl, photo)
             ]

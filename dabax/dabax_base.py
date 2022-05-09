@@ -360,14 +360,14 @@ class DabaxBase(object):
             if 'PhotonEnergy' in labels[i]:
                 energy_column_index = i
         if energy_column_index == -1:
-            raise Exception("Column with PhotonEnergy not found in scan %d of %s" % (index_found, file1))
+            raise Exception("Column with PhotonEnergy not found in scan index %d of %s" % (index_found, file1))
 
         cs_column_index = -1
         for i in range(len(labels)):
             if partial in labels[i]:
                 cs_column_index = i
         if cs_column_index == -1:
-            raise Exception("Column with %s not found in scan %d of %s" % (partial, index_found, file1))
+            raise Exception("Column with %s not found in scan index %d of %s" % (partial, index_found, file1))
 
         energy = data[energy_column_index, :].copy()
         cs = data[cs_column_index, :].copy()
@@ -388,9 +388,10 @@ class DabaxBase(object):
 
     def crosssec_interpolate(self, entry_name, energy,
                          method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
+                         partial='TotalCrossSection[barn/atom]',
                          ):
 
-        out = self.crosssec_extract(entry_name)
+        out = self.crosssec_extract(entry_name, partial=partial)
         if out is None:
             raise Exception("Descriptor %s not in file %s" % (entry_name, self.get_file_CrossSec()))
         else:

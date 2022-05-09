@@ -87,6 +87,16 @@ if __name__ == "__main__":
 
         nist_x = xraylib.GetCompoundDataNISTList()
         nist_d = dx.GetCompoundDataNISTList()
+
+        for i in range(len(nist_x)):
+            # print("\n")
+            # print("\n**%s**  **%s**" % (nist_x[i],nist_d[i]))
+            # print (type(nist_x[i]) , type(nist_d[i]))
+            if not ( nist_x[i]  in nist_d[i]):
+                print(">>>> Error processing %s" % (nist_x[i]))
+            print (dx.GetCompoundDataNISTByName(nist_x[i]))
+
+
         for i in range(len(nist_x)):
             print(nist_d[i], nist_x[i])
             a_d =      dx.GetCompoundDataNISTByIndex(i)
@@ -182,5 +192,5 @@ if __name__ == "__main__":
 
     else:
         pass
-
+        print("FF_Rayl  dabax,xraylib: ", dx.FF_Rayl(14, 2.0), xraylib.FF_Rayl(14, 2.0))
 

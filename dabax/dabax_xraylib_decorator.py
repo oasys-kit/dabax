@@ -267,58 +267,68 @@ class DabaxXraylibDecorator(object):
 
     # for compounds
 
+    def __compound_parser_checking_NIST(self, descriptor):
+        try:
+            out_dict = self.GetCompoundDataNISTByName(descriptor)
+        except:
+            try:
+                out_dict = self.compound_parser()
+            except:
+                raise Exception("Error processing compound descriptor: %s" % descriptor)
+
+        return out_dict
 
     def CS_Total_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Total_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Photo_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Photo_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Rayl_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Rayl_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Compt_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Compt_CP(self, descriptor, energy):
-        cp = self.compound_parser(descriptor,)
+        cp = self.__compound_parser_checking_NIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
@@ -372,10 +382,6 @@ class DabaxXraylibDecorator(object):
         nElements = int(s1.scan_header_dict["UnElements"])
         density = float(s1.scan_header_dict["Udensity"])
 
-        print("name: **" + name + "**")
-        print("nElements: %d" % nElements)
-        print("density: %g" % density)
-
         Elements = []
         massFractions = []
         for i in range(nElements):
@@ -386,25 +392,10 @@ class DabaxXraylibDecorator(object):
                 'massFractions': massFractions}
 
     def GetCompoundDataNISTByName(self, entry_name):
-        file1 = self.get_dabax_file("CompoundsNIST.dat")
-        sf = SpecFile(file1)
+        list1 = self.GetCompoundDataNISTList()
+        return self.GetCompoundDataNISTByIndex(list1.index(entry_name))
 
-        flag_found = False
 
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name1 = s1.scan_header_dict["S"]
-            name = ' '.join(name1.split())
-            if name.split(' ')[1] == entry_name:
-                flag_found = True
-                index_found = index
-
-        if not flag_found:
-            if self.verbose():
-                print("Entry name %s not found in DABAX file: %s" % (entry_name, "CompoundsNIST.dat"))
-            return None
-
-        return self.GetCompoundDataNISTByIndex(index_found)
 
 
     #
@@ -421,10 +412,12 @@ class DabaxXraylibDecorator(object):
     #  xraylib.AtomicNumberToSymbol(zi)
     #  xraylib.ElementDensity(Z)
     #  xraylib.AtomicWeight
+    #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
     #  xraylib.Fi(Z,1e-3*ienergy)
     #  xraylib.Fii(Z,1e-3*ienergy)
     #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
     #  xraylib.Crystal_F_H_StructureFactor(_crystal, E_keV, h, k, l, _debyeWaller, 1.0)
+
     #
     #  (used in power/power3d)
     #
@@ -457,7 +450,7 @@ class DabaxXraylibDecorator(object):
     #
     #   TODO
     #
-    #  xraylib.FF_Rayl(xraylib.SymbolToAtomicNumber(descriptor), iqscale)
+
 
 
 
