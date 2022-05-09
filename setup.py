@@ -31,7 +31,7 @@ __date__ = "22/10/2021"
 from setuptools import setup, find_packages
 
 setup(name='dabax',
-    version='1.0.4',
+    version='1.0.5',
     description='python access to DABAX files',
     author='M Sanchez del Rio',
     author_email='srio@esrf.eu',

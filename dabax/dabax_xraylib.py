@@ -110,6 +110,10 @@ if __name__ == "__main__":
             b_x = xraylib.GetCompoundDataNISTByName(name_x)
             print("\n", b_d, "\n", b_x,)
 
+
+        print(dx.CompoundParserCheckingNIST("H2O"))
+        print(dx.CompoundParserCheckingNIST("Water, Liquid"))
+
         #
         # scattering factors
         #
@@ -119,6 +123,7 @@ if __name__ == "__main__":
 
         print("FF_rayl dabax, xraylib: ",
               dx.FF_Rayl(17, 2.2),xraylib.FF_Rayl(17, 2.2) )
+        print("FF_Rayl  dabax,xraylib: ", dx.FF_Rayl(14, 2.0), xraylib.FF_Rayl(14, 2.0))
 
         # loops
         energies = numpy.linspace(15,18,10)
@@ -135,6 +140,7 @@ if __name__ == "__main__":
             dx1 = DabaxXraylib(file_f1f2=file)
             print("\nFi  dabax (%s): %g ,xraylib: %g" % (file, dx1.Fi(14, 18.0), xraylib.Fi(14, 18.0)))
             print("Fii  dabax (%s): %g ,xraylib: %g" % (file, dx1.Fii(14, 18.0), xraylib.Fii(14, 18.0)))
+
 
         #
         # cross sections
@@ -192,5 +198,5 @@ if __name__ == "__main__":
 
     else:
         pass
-        print("FF_Rayl  dabax,xraylib: ", dx.FF_Rayl(14, 2.0), xraylib.FF_Rayl(14, 2.0))
+
 

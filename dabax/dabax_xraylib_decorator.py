@@ -267,68 +267,58 @@ class DabaxXraylibDecorator(object):
 
     # for compounds
 
-    def __compound_parser_checking_NIST(self, descriptor):
-        try:
-            out_dict = self.GetCompoundDataNISTByName(descriptor)
-        except:
-            try:
-                out_dict = self.compound_parser()
-            except:
-                raise Exception("Error processing compound descriptor: %s" % descriptor)
-
-        return out_dict
 
     def CS_Total_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Total_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Total(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Photo_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Photo_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Photo(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Rayl_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Rayl_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Rayl(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CS_Compt_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CS_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
         return out
 
     def CSb_Compt_CP(self, descriptor, energy):
-        cp = self.__compound_parser_checking_NIST(descriptor,)
+        cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
             out += self.CSb_Compt(cp["Elements"][i], energy) * cp["massFractions"][i]
@@ -460,6 +450,17 @@ class DabaxXraylibDecorator(object):
     # auxiliar methods
     # there are not in xraylib, but accelerate the calculation
     #
+    def CompoundParserCheckingNIST(self, descriptor):
+        try:
+            out_dict = self.compound_parser(descriptor)
+
+        except:
+            try:
+                out_dict = self.GetCompoundDataNISTByName(descriptor)
+            except:
+                raise Exception("Error processing compound descriptor: %s" % descriptor)
+
+        return out_dict
 
     def FiAndFii(self, Z, energy):
         symbol = self.AtomicNumberToSymbol(Z)
