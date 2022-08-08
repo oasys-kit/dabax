@@ -16,7 +16,7 @@ if __name__ == "__main__":
     print("Refractive_Index_Im Be  dabax: ",  dx.Refractive_Index_Im ("Be",18.0, dens))
 
     # loops
-    energies = numpy.linspace(5,18,100)
+    energies = numpy.linspace(1,29,500)
     r1 = dx.Refractive_Index_Re("Be", energies, dens)
     i1 = dx.Refractive_Index_Im("Be", energies, dens)
     xr1 = numpy.zeros_like(energies)
@@ -30,8 +30,8 @@ if __name__ == "__main__":
     plot(energies, r1,
          energies, xr1,
          title="Real part of refraction index for Be",
-         legend=["DABAX (Henke data)", "XRAYLIB"])
+         legend=["DABAX (Henke data)", "XRAYLIB"], xlog=1, ylog=1, figsize=(10,5), show=0)
     plot(energies, i1,
          energies, xi1,
          title="Imaginary part of refraction index for Be",
-         legend=["DABAX", "XRAYLIB"])
+         legend=["DABAX", "XRAYLIB"], xlog=1, ylog=1, figsize=(10,5))
