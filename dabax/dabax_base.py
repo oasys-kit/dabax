@@ -6,7 +6,6 @@ dabax: python module for processing remote files containing dabax
 
 import numpy
 import os
-import socket
 from urllib.request import urlretrieve
 from silx.io.specfile import SpecFile
 
@@ -37,10 +36,7 @@ class DabaxBase(object):
             self._dabax_repository = dabax_repository
 
     def get_dabax_default_repository(self):
-        if socket.getfqdn().find("esrf") >= 0:
-            return "http://ftp.esrf.fr/pub/scisoft/DabaxFiles/"
-        else:
-            return "http://ftp.esrf.eu/pub/scisoft/DabaxFiles/"
+        return "https://raw.githubusercontent.com/oasys-kit/DabaxFiles/main/"
 
     def set_dabax_repository(self, repo):
         self._dabax_repository = repo
@@ -620,7 +616,8 @@ class DabaxBase(object):
         return new_dict
 
 if __name__ == '__main__':
-    dx = DabaxBase()
+    dx = DabaxBase(dabax_repository="https://gitlab.esrf.fr/srio/dabaxfiles/-/raw/main/")
+    print(dx.info())
     #
     # f0
     #
