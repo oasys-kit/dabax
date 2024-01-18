@@ -100,10 +100,10 @@ class DabaxBase(object):
         # file exists in current directory
         #
         dabax_repository = self.get_dabax_repository()
+
         if os.path.exists(filename):
             if self.verbose(): print("Dabax file exists in local directory: %s " % filename)
             return filename
-
         #
         # download remote file
         #
@@ -117,7 +117,6 @@ class DabaxBase(object):
                 return filename
             except:
                 raise Exception("Failed to download file %s from %s" % (filename, dabax_repository))
-
         #
         # file exists in local repository
         #
@@ -126,6 +125,7 @@ class DabaxBase(object):
             if self.verbose(): print("Dabax file exists in local directory: %s " % f1)
             return f1
 
+        print("Error trying to access file: %s" % f1)
         raise Exception(FileNotFoundError)
 
 
@@ -136,6 +136,7 @@ class DabaxBase(object):
     def get_f0_coeffs_from_dabax_file(self, entry_name="Y3+"):
         filename = self.get_file_f0()
         file1 = self.get_dabax_file(filename)
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -164,6 +165,7 @@ class DabaxBase(object):
         else:
             # retrieve all entries
             filename = self.get_dabax_file(filename)
+            if self.verbose(): print("Accessing file: %s" % filename)
             sf = SpecFile(filename)
             # retrieve all entries
             entries = []
@@ -214,6 +216,7 @@ class DabaxBase(object):
         else:
             # retrieve all entries
             filename = self.get_dabax_file(filename)
+            if self.verbose(): print("Accessing file: %s" % filename)
             sf = SpecFile(filename)
             # retrieve all entries
             entries = []
@@ -258,6 +261,7 @@ class DabaxBase(object):
     def f1f2_extract(self, entry_name="Y3+"):
         filename = self.get_file_f1f2()
         file1 = self.get_dabax_file(filename)
+        if self.verbose(): print("Accessing file: %s" % filename)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -331,6 +335,7 @@ class DabaxBase(object):
     def crosssec_extract(self, entry_name="Si", partial='TotalCrossSection[barn/atom]'):
         filename = self.get_file_CrossSec()
         file1 = self.get_dabax_file(filename)
+        if self.verbose(): print("Accessing file: %s" % filename)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -440,6 +445,7 @@ class DabaxBase(object):
 
         # access spec file
         file1 = self.get_dabax_file(filename)
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         out = []
@@ -548,7 +554,7 @@ class DabaxBase(object):
         # access spec file
 
         file1 = self.get_dabax_file(filename)
-
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         out = []
@@ -711,6 +717,7 @@ if __name__ == '__main__':
     if False: # used to create f0_xop_with_fractional_charge_data() in common_tools
         filename = dx.get_file_f0()
         file1 = dx.get_dabax_file(filename)
+        if self.verbose(): print("Accessing file: %s" % filename)
         sf = SpecFile(file1)
         for Z in range(1,99):
             interesting_entries, charge_list, coefficient_list = dx._f0_with_fractional_charge_get_entries(Z, charge=1)

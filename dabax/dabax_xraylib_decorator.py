@@ -27,6 +27,7 @@ class DabaxXraylibDecorator(object):
 
         file1 = self.get_dabax_file(filename)
 
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         flag_found = False
@@ -136,6 +137,7 @@ class DabaxXraylibDecorator(object):
         get crystal names from crystals.dat
         """
         file1 = self.get_dabax_file(self.get_file_Crystals())
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
         crystals = []
         for index in range(len(sf)):
@@ -353,6 +355,7 @@ class DabaxXraylibDecorator(object):
 
     def GetCompoundDataNISTList(self):
         file1 = self.get_dabax_file("CompoundsNIST.dat")
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         list1 = []
@@ -363,6 +366,7 @@ class DabaxXraylibDecorator(object):
 
     def GetCompoundDataNISTByIndex(self, index_found):
         file1 = self.get_dabax_file("CompoundsNIST.dat")
+        if self.verbose(): print("Accessing file: %s" % file1)
         sf = SpecFile(file1)
 
         s1 = sf[index_found]
