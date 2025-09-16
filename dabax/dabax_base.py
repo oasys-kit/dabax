@@ -113,10 +113,20 @@ class DabaxBase(object):
                                                  filename=filename,
                                                  reporthook=None,
                                                  data=None)
+
                 if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
                 return filename
             except:
-                raise Exception("Failed to download file %s from %s" % (filename, dabax_repository))
+                try: # in case there are write permissions issues
+                    filepath, http_msg = urlretrieve(dabax_repository + filename,
+                                                     filename=None, # will create a temp file
+                                                     reporthook=None,
+                                                     data=None)
+
+                    if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
+                    return filepath
+                except:
+                    raise Exception("Failed to download file %s from %s" % (filename, dabax_repository))
         #
         # file exists in local repository
         #
