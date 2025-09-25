@@ -6,12 +6,24 @@ dabax: python module for processing remote files containing dabax
 
 import numpy
 import os
-from urllib.request import urlretrieve
+from urllib.request import urlretrieve, build_opener, HTTPSHandler, install_opener
 from silx.io.specfile import SpecFile
+import ssl
 
 from dabax.common_tools import calculate_f0_from_f0coeff, f0_interpolate_coefficients
 from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
 from dabax.common_tools import parse_formula
+
+try:
+    # create an "unverified" SSL context
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
+    # build and install an opener that uses the unverified context for HTTPS
+    install_opener(build_opener(HTTPSHandler(context=context)))
+except:
+    pass
 
 class DabaxBase(object):
     def __init__(self,
