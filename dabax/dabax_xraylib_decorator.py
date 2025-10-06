@@ -329,6 +329,19 @@ class DabaxXraylibDecorator(object):
     #########################
     #  refractive index
     #########################
+
+    def Refractive_Index(self, descriptor, energy, density):
+        cp = self.compound_parser(descriptor)
+        KD = 4.15179082788e-4  # TODO: recalculate with codata....
+        rv_re = 0.0
+        rv_im = 0.0
+        for i in range(cp["nElements"]):
+            Z = cp["Elements"][i]
+            rv_re += cp["massFractions"][i] * KD * (Z + self.Fi(Z, energy)) / self.AtomicWeight(Z) / energy / energy
+            rv_im += self.CS_Total(Z, energy) * cp["massFractions"][i]
+
+        return (1 - rv_re * density) + 1j*(rv_im * density * 9.8663479e-9 / energy)
+
     def Refractive_Index_Re(self, descriptor, energy, density):
         cp = self.compound_parser(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
