@@ -4,8 +4,8 @@
 cff-version: 1.2.0
 title: DABAX
 message: >-
-  python library to access Dabax files
-  https://gitlab.esrf.fr/srio/dabaxfiles
+  Python library to access DABAX (DAtaBAse for X-rays) files
+  in https://github.com/oasys-kit/DabaxFiles
 type: software
 authors:
   - given-names: Manuel
@@ -13,8 +13,7 @@ authors:
     email: srio@esrf.eu
     affiliation: ESRF
     orcid: 'https://orcid.org/0000-0003-0275-436X'
-title: "DABAX python library"
-version: 1.0.0
-doi: 
-date-released: 2021-12-12
-url: "https://github.com/oasys-kit/dabax"
+url: 'https://github.com/oasys-kit/dabax'
+version: 1.0.9
+date-released: '2025-10-07'
+doi: null
