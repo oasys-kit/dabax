@@ -28,11 +28,17 @@ __authors__ = ["M Sanchez del Rio - ESRF"]
 __license__ = "MIT"
 __date__ = "22/10/2021"
 
+import os
 from setuptools import setup, find_packages
+
+README_FILE = os.path.join(os.path.dirname(__file__), 'README.rst')
+LONG_DESCRIPTION = open(README_FILE).read()
 
 setup(name='dabax',
     version='1.0.9',
     description='python access to DABAX files',
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/x-rst',
     author='M Sanchez del Rio',
     author_email='srio@esrf.eu',
     url='https://github.com/oasys-kit/dabax/',

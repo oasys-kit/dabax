@@ -189,6 +189,7 @@ if __name__ == "__main__":
         dens = dx.element_density("Be")
         print("Refractive_Index_Re Be  dabax,xraylib: ",  dx.Refractive_Index_Re ("Be",18.0, dens), xraylib.Refractive_Index_Re ("Be",18.0, dens))
         print("Refractive_Index_Im Be  dabax,xraylib: ",  dx.Refractive_Index_Im ("Be",18.0, dens), xraylib.Refractive_Index_Im ("Be",18.0, dens))
+        print("Refractive_Index Be  dabax,xraylib: ",  dx.Refractive_Index ("Be",18.0, dens), xraylib.Refractive_Index ("Be",18.0, dens))
 
         # loops
         energies = numpy.linspace(15,18,10)
