@@ -19,6 +19,7 @@ def dabax_crosssec_files():
             "CrossSec_BrennanCowan.dat",
             "CrossSec_StormIsrael.dat",
             "CrossSec_McMaster.dat",
-            # "CrossSec_NISTxaamdi.dat",   # they do not contain partial cross sections (compton, rayl, photo)
-            # "CrossSec_PE_Scofield.dat",   # they do not contain partial cross sections (compton, rayl, photo)
+            "CrossSec_NIST.dat",                      # does not contain partial cross sections (compton, rayl, photo)
+            "CrossSec_NIST_MassEnergyAbsorption.dat", # does not contain partial cross sections (compton, rayl, photo)
+            # "CrossSec_PE_Scofield.dat",   # does not contain partial cross sections (compton, rayl, photo)
             ]
