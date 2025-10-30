@@ -111,7 +111,7 @@ class DabaxBase(object):
 
         if not flag_found and verbose:
             print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
-            return None, None
+            return None, None, -1
 
         data   = spec_file[index_found].data
         labels = spec_file[index_found].labels
