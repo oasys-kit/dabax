@@ -1,6 +1,8 @@
 import numpy
 from dabax.dabax_base import DabaxBase
-from dabax.dabax_xraylib_decorator import DabaxXraylibDecorator
+from dabax.dabax_xraylib_decorator import DabaxXraylibDecorator, Functions
+from silx.io.specfile import SpecFile
+
 
 class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
     """
@@ -20,6 +22,22 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
                            file_f1f2=file_f1f2,
                            file_CrossSec=file_CrossSec,
                            file_Crystals=file_Crystals)
+
+        self._file_NIST = "CompoundsNIST.dat"
+        self._sf_NIST, self._sf_NIST_entries = self._register_file(self._file_NIST, Functions.CompoundDataNIST)
+
+    def get_file_NIST(self): return self._file_NIST
+
+    def _register_file(self, filename, function):
+        if function == Functions.CompoundDataNIST:
+            spec_file = SpecFile(self.get_dabax_file(filename))
+            entries   = [spec_file[index].scan_header_dict["Uname"] for index in range(len(spec_file))]
+
+            self._spec_file_registry[filename] = [spec_file, entries]
+
+            return spec_file, entries
+        else:
+            return super(DabaxXraylib, self)._register_file(filename, function)
 
 if __name__ == "__main__":
 

@@ -4,9 +4,18 @@
 import numpy
 import scipy.constants as codata
 from silx.io.specfile import SpecFile
-from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
+from dabax.common_tools import atomic_symbols, atomic_number
 from dabax.common_tools import bragg_metrictensor
 from dabax.common_tools import calculate_f0_from_f0coeff
+from dabax.dabax_base import Functions as BaseFunctions, DabaxBase
+
+class Functions(BaseFunctions):
+    CompoundDataNIST = 'CompoundDataNIST'
+
+    @staticmethod
+    def get_mode(function):
+        if function == Functions.CompoundDataNIST: return 0
+        else:                                      return BaseFunctions.get_mode(function)
 
 class DabaxXraylibDecorator(object):
 
@@ -21,38 +30,27 @@ class DabaxXraylibDecorator(object):
 
         return a dictionary containing crystal infomation
         """
-        dabax_repository = self.get_dabax_repository()
 
-        filename = self.get_file_Crystals()
 
-        file1 = self.get_dabax_file(filename)
-
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
-
-        flag_found = False
-
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name = s1.scan_header_dict["S"]
-            if name.split(' ')[1] == entry_name:
-                flag_found = True
-                index_found = index
-
-        if not flag_found:
-            raise (Exception("Entry name not found: %s" % entry_name))
+        filename                  = self.get_file_Crystals()
+        spec_file, entries        = self._get_registered_spec_file(filename, Functions.Crystals)
+        data, labels, index_found = DabaxBase._get_data_and_labels(spec_file,
+                                                                   entries,
+                                                                   entry_name,
+                                                                   verbose=self.verbose(),
+                                                                   filename=filename)
 
         cryst = {'name': entry_name}  # returned dictionary like that one created by xraylib.Crystal_GetCrystal(descriptor)
 
-        cell_parameters = sf[index_found].scan_header_dict["UCELL"]
+        cell_parameters = spec_file[index_found].scan_header_dict["UCELL"]
         cell_parameters = ' '.join(cell_parameters.split())  # remove multiple blanks
 
         a = cell_parameters.split(' ')
-        cryst['a'] = float(a[0])
-        cryst['b'] = float(a[1])
-        cryst['c'] = float(a[2])
+        cryst['a']     = float(a[0])
+        cryst['b']     = float(a[1])
+        cryst['c']     = float(a[2])
         cryst['alpha'] = float(a[3])
-        cryst['beta'] = float(a[4])
+        cryst['beta']  = float(a[4])
         cryst['gamma'] = float(a[5])
 
         volume = bragg_metrictensor(float(a[0]), float(a[1]), float(a[2]),
@@ -60,7 +58,7 @@ class DabaxXraylibDecorator(object):
 
         cryst['volume'] = volume
 
-        cell_data = numpy.array(sf[index_found].data)
+        cell_data = numpy.array(data)
 
         cryst['n_atom'] = cell_data.shape[1]
         atom = []
@@ -94,7 +92,7 @@ class DabaxXraylibDecorator(object):
         cryst['cpointer'] = None
 
         ANISO_KEY = "UANISO_COFF"  # prefix for a line with anisotropic coefficients
-        d = sf[index_found].scan_header_dict
+        d = spec_file[index_found].scan_header_dict
         AnisoItem = {'Name': '       ',
                      'start': 0,
                      'end': 0,
@@ -136,14 +134,8 @@ class DabaxXraylibDecorator(object):
         """
         get crystal names from crystals.dat
         """
-        file1 = self.get_dabax_file(self.get_file_Crystals())
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
-        crystals = []
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name = s1.scan_header_dict["S"]
-            crystals.append(name.split(' ')[1])
+        filename = self.get_file_Crystals()
+        _, crystals = self._get_registered_spec_file(filename, Functions.Crystals)
 
         return crystals
 
@@ -367,40 +359,32 @@ class DabaxXraylibDecorator(object):
     #
 
     def GetCompoundDataNISTList(self):
-        file1 = self.get_dabax_file("CompoundsNIST.dat")
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
+        filename         = self.get_file_NIST()
+        _, compound_list = self._get_registered_spec_file(filename, Functions.CompoundDataNIST)
 
-        list1 = []
-        for index in range(len(sf)):
-            list1.append(sf[index].scan_header_dict["Uname"])
-
-        return list1
+        return compound_list
 
     def GetCompoundDataNISTByIndex(self, index_found):
-        file1 = self.get_dabax_file("CompoundsNIST.dat")
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
+        filename = self.get_file_NIST()
+        spec_file, _ = self._get_registered_spec_file(filename, Functions.CompoundDataNIST)
 
-        s1 = sf[index_found]
+        s1   = spec_file[index_found]
         data = s1.data
 
-        name = s1.scan_header_dict["Uname"]
+        name      = s1.scan_header_dict["Uname"]
         nElements = int(s1.scan_header_dict["UnElements"])
-        density = float(s1.scan_header_dict["Udensity"])
+        density   = float(s1.scan_header_dict["Udensity"])
 
-        Elements = []
+        Elements      = []
         massFractions = []
         for i in range(nElements):
             Elements.append(int(data[0][i]))
             massFractions.append(data[1][i])
 
-        return {"name": name, 'nElements': nElements, 'density': density, 'Elements': Elements,
-                'massFractions': massFractions}
+        return {"name": name, 'nElements': nElements, 'density': density, 'Elements': Elements, 'massFractions': massFractions}
 
     def GetCompoundDataNISTByName(self, entry_name):
-        list1 = self.GetCompoundDataNISTList()
-        return self.GetCompoundDataNISTByIndex(list1.index(entry_name))
+        return self.GetCompoundDataNISTByIndex(self.GetCompoundDataNISTList().index(entry_name))
 
 
 

@@ -3,6 +3,7 @@
 dabax: python module for processing remote files containing dabax
 
 """
+from typing import Tuple, List, Any
 
 import numpy
 import os
@@ -25,6 +26,19 @@ try:
 except:
     pass
 
+
+class Functions:
+    f0 = "f0"
+    f1f2 = "f1f2"
+    CrossSec = "CrossSec"
+    Crystals = "Crystals"
+    AtomicWeights = "AtomicWeights"
+    AtomicConstants = "AtomicConstants"
+
+    @staticmethod
+    def get_mode(function):
+        return 0 if function in [Functions.f0, Functions.AtomicConstants] else 1
+
 class DabaxBase(object):
     def __init__(self,
                  dabax_repository=None,
@@ -33,19 +47,104 @@ class DabaxBase(object):
                  file_f1f2="f1f2_Windt.dat",
                  file_CrossSec = "CrossSec_EPDL97.dat",
                  file_Crystals="Crystals.dat",
+                 file_AtomicWeights="AtomicWeights.dat",
+                 file_AtomicConstants="AtomicConstants.dat",
                  ):
 
-        self._dabax_repository = dabax_repository
-        self._verbose = verbose
-        self._file_f0 = file_f0
-        self._file_f1f2 = file_f1f2
-        self._file_CrossSec = file_CrossSec
-        self._file_Crystals = file_Crystals
 
-        if dabax_repository is None:
-            self._dabax_repository = self.get_dabax_default_repository()
-        else:
-            self._dabax_repository = dabax_repository
+
+        self._dabax_repository = dabax_repository if not dabax_repository is None else self.get_dabax_default_repository()
+        self._verbose = verbose
+
+        self._spec_file_registry = {}
+        self._modes = {}
+
+        self.set_file_f0(file_f0)
+        self.set_file_f1f2(file_f1f2)
+        self.set_file_CrossSec(file_CrossSec)
+        self.set_file_Crystals(file_Crystals)
+        self.set_file_AtomicWeights(file_AtomicWeights)
+        self.set_file_AtomicConstants(file_AtomicConstants)
+
+    def _register_file(self, filename, function):
+        spec_file = SpecFile(self.get_dabax_file(filename))
+        entries   = DabaxBase._get_entries(spec_file, Functions.get_mode(function))
+
+        self._spec_file_registry[filename] = [spec_file, entries]
+
+        return spec_file, entries
+
+    def _get_registered_spec_file(self, filename, function):
+        data = self._spec_file_registry.get(filename, [None, None])
+
+        spec_file = data[0]
+        entries   = data[1]
+
+        if not spec_file is None: return spec_file, entries
+        else:                     return self._register_file(filename, function)
+
+    @staticmethod
+    def _get_index_of_entry(entries: Tuple, entry_name: str) -> int:
+        try:    return entries.index(entry_name)
+        except: return -1
+
+    @staticmethod
+    def _get_entries(spec_file : SpecFile, mode=0) -> Tuple:
+        entries = []
+        for index in range(len(spec_file)):
+            s1 = spec_file[index]
+            name = s1.scan_header_dict["S"]
+            if mode == 0:
+                try: entries.append(name.split('  ')[1])
+                except: pass
+            elif mode == 1:
+                name = ' '.join(name.split())
+                try: entries.append(name.split(' ')[1])
+                except: pass
+
+        return entries
+
+    @staticmethod
+    def _get_data_and_labels(spec_file: SpecFile, entries: Tuple, entry_name, verbose=False, filename=None):
+        index_found = DabaxBase._get_index_of_entry(entries, entry_name)
+        flag_found  = index_found != -1
+
+        if not flag_found and verbose:
+            print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
+            return None, None
+
+        data   = spec_file[index_found].data
+        labels = spec_file[index_found].labels
+
+        return data, labels, index_found
+
+    @staticmethod
+    def _get_interesting_entries(entries: Tuple, symbol: str) -> Tuple[List[Any], List[Any], List[Any]]:
+        interesting_entries = []
+        charge_list         = []
+        index_list          = []
+
+        for i, entry in enumerate(entries):
+            if entry.find(symbol) == 0:
+                if entry == symbol:
+                    interesting_entries.append(entry)
+                    charge_list.append(0.0)
+                    index_list.append(i)
+                else:
+                    entry2 = entry.replace(symbol, '')
+                    try:
+                        charge_item = int(entry2[::-1])  # convert to integer the reversed string
+                        charge_list.append(charge_item)
+                        interesting_entries.append(entry)
+                        index_list.append(i)
+                    except:
+                        pass
+
+        return charge_list, index_list, interesting_entries
+
+    @staticmethod
+    def _get_coefficient_list(spec_file: SpecFile, index_list: Tuple[int]):
+        return [spec_file[i].data[:, 0] for i in index_list]
 
     def get_dabax_default_repository(self):
         return "https://raw.githubusercontent.com/oasys-kit/DabaxFiles/main/"
@@ -64,27 +163,46 @@ class DabaxBase(object):
 
     def set_file_f0(self, filename):
         self._file_f0 = filename
+        self._sf_f0, self._sf_f0_entries = self._register_file(self._file_f0, Functions.f0)
 
     def get_file_f0(self):
         return self._file_f0
 
     def set_file_f1f2(self, filename):
         self._file_f1f2 = filename
+        self._sf_f1f2, self._sf_f1f2_entries = self._register_file(self._file_f1f2, Functions.f1f2)
 
     def get_file_f1f2(self):
         return self._file_f1f2
 
     def set_file_CrossSec(self, filename):
         self._file_CrossSec = filename
+        self._sf_CrossSec, self._sf_CrossSec_entries = self._register_file(self._file_CrossSec, Functions.CrossSec)
 
     def get_file_CrossSec(self):
         return self._file_CrossSec
 
     def set_file_Crystals(self, filename):
         self._file_Crystals = filename
+        self._sf_Crystals, self._sf_Crystals_entries = self._register_file(self._file_Crystals, Functions.Crystals)
 
     def get_file_Crystals(self):
         return self._file_Crystals
+
+
+    def set_file_AtomicWeights(self, filename):
+        self._file_AtomicWeights = filename
+        self._sf_AtomicWeights, self._sf_AtomicWeights_entries = self._register_file(self._file_AtomicWeights, Functions.AtomicWeights)
+
+    def get_file_AtomicWeights(self) -> str:
+        return self._file_AtomicWeights
+
+    def set_file_AtomicConstants(self, filename):
+        self._file_AtomicConstants = filename
+        self._sf_AtomicConstants, self._sf_AtomicConstants_entries = self._register_file(self._file_AtomicConstants, Functions.AtomicConstants)
+
+    def get_file_AtomicConstants(self):
+        return self._file_AtomicConstants
 
     def info(self):
         txt = "################  DABAX info ###########\n"
@@ -156,124 +274,44 @@ class DabaxBase(object):
     #########################
 
     def get_f0_coeffs_from_dabax_file(self, entry_name="Y3+"):
-        filename = self.get_file_f0()
-        file1 = self.get_dabax_file(filename)
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
-
-        flag_found = False
-
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name = s1.scan_header_dict["S"]
-
-            if name.split('  ')[1] == entry_name:
-                flag_found = True
-                index_found = index
-
-        if flag_found:
-            return (sf[index_found].data)[:, 0]
-        else:
-            return []
-
+        filename           = self.get_file_f0()
+        spec_file, entries = self._get_registered_spec_file(filename, Functions.f0)
+        data, _, _         = DabaxBase._get_data_and_labels(spec_file,
+                                                            entries,
+                                                            entry_name,
+                                                            verbose=self.verbose(),
+                                                            filename=filename)
+        if not data is None: return data[:, 0]
+        else:                return []
 
     def f0_with_fractional_charge(self, Z, charge=0.0):
-        filename = self.get_file_f0()
-
         symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
             return self.get_f0_coeffs_from_dabax_file(entry_name=symbol)
         else:
-            # retrieve all entries
-            filename = self.get_dabax_file(filename)
-            if self.verbose(): print("Accessing file: %s" % filename)
-            sf = SpecFile(filename)
-            # retrieve all entries
-            entries = []
-            for index in range(len(sf)):
-                s1 = sf[index]
-                name = s1.scan_header_dict["S"]
-                entries.append(name.split('  ')[1])
+            spec_file, entries         = self._get_registered_spec_file(self.get_file_f0(), Functions.f0)
+            charge_list, index_list, _ = DabaxBase._get_interesting_entries(entries, symbol)
 
-            # identify the entries that match the symbol
-            interesting_entries = []
-            charge_list = []
-            index_list = []
-            for i, entry in enumerate(entries):
-                if entry.find(symbol) == 0:
-                    if entry == symbol:
-                        interesting_entries.append(entry)
-                        charge_list.append(0.0)
-                        index_list.append(i)
-                    else:
-                        entry2 = entry.replace(symbol, '')
-                        try:
-                            charge_item = int(entry2[::-1])  # convert to integer the reversed string
-                            charge_list.append(charge_item)
-                            interesting_entries.append(entry)
-                            index_list.append(i)
-                        except:
-                            pass
-
-            # retrieve coefficients from these interesting entries
-            coefficient_list = []
-            for i in index_list:
-                coefficient_list.append((sf[i].data)[:, 0])
-
-            # return self.__f0_interpolate_coefficients(charge, interesting_entries, charge_list, coefficient_list)
-            return f0_interpolate_coefficients(charge, charge_list, coefficient_list)
+            return f0_interpolate_coefficients(charge,
+                                               charge_list,
+                                               DabaxBase._get_coefficient_list[spec_file, index_list])
 
     #
     #
     #
 
     def _f0_with_fractional_charge_get_entries(self, Z, charge=0.0):
-        filename = self.get_file_f0()
-
         symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
             return None
         else:
-            # retrieve all entries
-            filename = self.get_dabax_file(filename)
-            if self.verbose(): print("Accessing file: %s" % filename)
-            sf = SpecFile(filename)
-            # retrieve all entries
-            entries = []
-            for index in range(len(sf)):
-                s1 = sf[index]
-                name = s1.scan_header_dict["S"]
-                entries.append(name.split('  ')[1])
+            spec_file, entries                           = self._get_registered_spec_file(self.get_file_f0(), Functions.f0)
+            charge_list, index_list, interesting_entries = DabaxBase._get_interesting_entries(entries, symbol)
 
-            # identify the entries that match the symbol
-            interesting_entries = []
-            charge_list = []
-            index_list = []
-            for i, entry in enumerate(entries):
-                if entry.find(symbol) == 0:
-                    if entry == symbol:
-                        interesting_entries.append(entry)
-                        charge_list.append(0.0)
-                        index_list.append(i)
-                    else:
-                        entry2 = entry.replace(symbol, '')
-                        try:
-                            charge_item = int(entry2[::-1])  # convert to integer the reversed string
-                            charge_list.append(charge_item)
-                            interesting_entries.append(entry)
-                            index_list.append(i)
-                        except:
-                            pass
+            return interesting_entries, charge_list, DabaxBase._get_coefficient_list(spec_file, index_list)
 
-            # retrieve coefficients from these interesting entries
-            coefficient_list = []
-            for i in index_list:
-                coefficient_list.append((sf[i].data)[:, 0])
-
-            # return self.__f0_interpolate_coefficients(charge, interesting_entries, charge_list, coefficient_list)
-            return interesting_entries, charge_list, coefficient_list
 
 
     ######################
@@ -281,28 +319,15 @@ class DabaxBase(object):
     ######################
 
     def f1f2_extract(self, entry_name="Y3+"):
-        filename = self.get_file_f1f2()
-        file1 = self.get_dabax_file(filename)
-        if self.verbose(): print("Accessing file: %s" % filename)
-        sf = SpecFile(file1)
-
-        flag_found = False
-
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name1 = s1.scan_header_dict["S"]
-            name = ' '.join(name1.split())
-            if name.split(' ')[1] == entry_name:
-                flag_found = True
-                index_found = index
-
-        if not flag_found:
-            if self.verbose():
-                print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
-            return None
-
+        filename           = self.get_file_f1f2()
+        spec_file, entries = self._get_registered_spec_file(filename, Functions.f1f2)
+        data, _, _         = DabaxBase._get_data_and_labels(spec_file,
+                                                            entries,
+                                                            entry_name,
+                                                            verbose=self.verbose(),
+                                                            filename=filename)
         # energy
-        energy_in_eV = (sf[index_found].data)[0,:].copy()
+        energy_in_eV = data[0,:].copy()
         if filename == 'f1f2_asf_Kissel.dat' or \
             filename == 'f1f2_Chantler.dat':
             if self.verbose(): print('f1f2_extract: Changing Energy from keV to eV for DABAX file '+filename)
@@ -310,19 +335,22 @@ class DabaxBase(object):
 
         # f1f2
         if filename == 'f1f2_asf_Kissel.dat':
-            f1 = sf[index_found].data[4,:].copy()
-            f2 = numpy.abs(sf[index_found].data[1,:].copy())
+            f1 = data[4,:].copy()
+            f2 = numpy.abs(data[1,:].copy())
         else:
-            f1 = sf[index_found].data[1,:].copy()
-            f2 = sf[index_found].data[2,:].copy()
+            f1 = data[1,:].copy()
+            f2 = data[2,:].copy()
 
         return energy_in_eV, f1, f2
 
-    def f1f2_interpolate(self, entry_name, energy,
+    def f1f2_interpolate(self,
+                         entry_name,
+                         energy,
                          method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
                          ):
 
         energy0, f1, f2 = self.f1f2_extract(entry_name)
+
         if method == 0:
             f1_interpolated = numpy.interp(energy, energy0, f1)
             f2_interpolated = numpy.interp(energy, energy0, f2)
@@ -347,6 +375,8 @@ class DabaxBase(object):
             f2_interpolated = 10 ** numpy.interp(numpy.log10(energy),
                                                  numpy.log10(energy0),
                                                  numpy.log10(f2))
+        else:
+            raise ValueError(f"Method {method} not recognized")
 
         return f1_interpolated, f2_interpolated
 
@@ -355,45 +385,22 @@ class DabaxBase(object):
     ######################
 
     def crosssec_extract(self, entry_name="Si", partial='TotalCrossSection[barn/atom]'):
-        filename = self.get_file_CrossSec()
-        file1 = self.get_dabax_file(filename)
-        if self.verbose(): print("Accessing file: %s" % filename)
-        sf = SpecFile(file1)
+        filename                  = self.get_file_CrossSec()
+        spec_file, entries        = self._get_registered_spec_file(filename, Functions.CrossSec)
+        data, labels, index_found = DabaxBase._get_data_and_labels(spec_file,
+                                                                   entries,
+                                                                   entry_name,
+                                                                   verbose=self.verbose(),
+                                                                   filename=filename)
 
-        flag_found = False
+        energy_column_index = next((i for i, label in enumerate(labels) if 'PhotonEnergy' in label), -1)
+        if energy_column_index == -1: raise Exception("Column with PhotonEnergy not found in scan index %d of %s" % (index_found, self.get_file_CrossSec()))
 
-        for index in range(len(sf)):
-            s1 = sf[index]
-            name1 = s1.scan_header_dict["S"]
-            name = ' '.join(name1.split())
-            if name.split(' ')[1] == entry_name:
-                flag_found = True
-                index_found = index
-
-        if not flag_found:
-            if self.verbose():
-                print("Entry name %s not found in DABAX file: %s" % (entry_name, filename))
-            return None
-
-        data = sf[index_found].data
-        labels = sf[index_found].labels
-
-        energy_column_index = -1
-        for i in range(len(labels)):
-            if 'PhotonEnergy' in labels[i]:
-                energy_column_index = i
-        if energy_column_index == -1:
-            raise Exception("Column with PhotonEnergy not found in scan index %d of %s" % (index_found, file1))
-
-        cs_column_index = -1
-        for i in range(len(labels)):
-            if partial in labels[i]:
-                cs_column_index = i
-        if cs_column_index == -1:
-            raise Exception("Column with %s not found in scan index %d of %s" % (partial, index_found, file1))
+        cs_column_index = next((i for i, label in enumerate(labels) if partial in label), -1)
+        if cs_column_index == -1: raise Exception("Column with %s not found in scan index %d of %s" % (partial, index_found, self.get_file_CrossSec()))
 
         energy = data[energy_column_index, :].copy()
-        cs = data[cs_column_index, :].copy()
+        cs     = data[cs_column_index, :].copy()
 
         # print("\n>>>>")
         if '[EV]' in labels[energy_column_index].upper():
@@ -415,10 +422,9 @@ class DabaxBase(object):
                          ):
 
         out = self.crosssec_extract(entry_name, partial=partial)
-        if out is None:
-            raise Exception("Descriptor %s not in file %s" % (entry_name, self.get_file_CrossSec()))
-        else:
-            energy0, cs = out
+
+        if out is None: raise Exception("Descriptor %s not in file %s" % (entry_name, self.get_file_CrossSec()))
+        else:           energy0, cs = out
 
         if method == 0:
             cs_interpolated = numpy.interp(energy, energy0, cs)
@@ -434,6 +440,8 @@ class DabaxBase(object):
             cs_interpolated = 10 ** numpy.interp(numpy.log10(energy),
                                                  numpy.log10(energy0),
                                                  numpy.log10(cs))
+        else:
+            raise ValueError(f"Method {method} not recognized")
 
         return cs_interpolated
 
@@ -458,6 +466,7 @@ class DabaxBase(object):
         ;       filename = the DABAX  inout file (default AtomicWeights.dat)
 
         """
+        spec_file, scan_names = self._get_registered_spec_file(filename, Functions.AtomicWeights)
 
         if isinstance(descriptor, str):
             descriptor = [descriptor]
@@ -465,39 +474,26 @@ class DabaxBase(object):
         else:  # is list
             descriptor_is_string = 0
 
-        # access spec file
-        file1 = self.get_dabax_file(filename)
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
 
         out = []
-
         for idescriptor in descriptor:
-            flag_found = False
+            flag_found  = False
             index_found = []
-            for index in range(len(sf)):
-                s1 = sf[index]
-                name = s1.scan_header_dict["S"]
-                line = " ".join(name.split())
-                scan_name = line.split(' ')[1]
+
+            for index, scan_name in enumerate(scan_names):
                 if scan_name[-len(idescriptor):] == idescriptor:
                     flag_found = True
                     index_found.append(index)
 
-            if not flag_found:
-                raise (Exception("Entry name not found: %s" % idescriptor))
+            if not flag_found: raise (Exception("Entry name not found: %s" % idescriptor))
 
-            data = sf[index_found[0]].data
+            data = spec_file[index_found[0]].data
 
-            if idescriptor[0].isdigit():
-                out.append(data[0, 0])
-            else:
-                out.append(data[2, 0])
+            if idescriptor[0].isdigit(): out.append(data[0, 0])
+            else:                        out.append(data[2, 0])
 
-        if descriptor_is_string:
-            return out[0]
-        else:
-            return out
+        if descriptor_is_string: return out[0]
+        else:                    return out
 
 
     def atomic_constants(self, descriptor,
@@ -575,36 +571,24 @@ class DabaxBase(object):
         if return_index == -1: raise Exception("Bad item index")
         # access spec file
 
-        file1 = self.get_dabax_file(filename)
-        if self.verbose(): print("Accessing file: %s" % file1)
-        sf = SpecFile(file1)
+        spec_file, scan_names = self._get_registered_spec_file(filename, Functions.AtomicConstants)
 
         out = []
-
         for idescriptor in descriptor:
+            index = DabaxBase._get_index_of_entry(scan_names, idescriptor)
 
-            for index in range(len(sf)):
-                flag_found = False
-                s1 = sf[index]
-                name = s1.scan_header_dict["S"]
-                scan_name = name.split('  ')[1]
-                if scan_name == idescriptor:
-                    flag_found = True
-                    index_found = index
-                    break
+            flag_found  = index != -1
+            index_found = index
 
-            if flag_found:
-                out.append((sf[index_found].data)[return_index, 0])
-            else:
-                raise Exception("Data not found for %s " % idescriptor)
+            if flag_found: out.append(spec_file[index_found].data[return_index, 0])
+            else:          raise Exception("Data not found for %s " % idescriptor)
 
-        if descriptor_is_string:
-            return out[0]
-        else:
-            return out
+        if descriptor_is_string: return out[0]
+        else:                    return out
 
 
-    def element_density(self, descriptor,
+    def element_density(self,
+                        descriptor,
                         filename="AtomicConstants.dat"):
 
         return self.atomic_constants(descriptor, filename=filename, return_label="Density")
@@ -642,6 +626,9 @@ class DabaxBase(object):
         }
 
         return new_dict
+
+
+
 
 if __name__ == '__main__':
     dx = DabaxBase(dabax_repository="https://gitlab.esrf.fr/srio/dabaxfiles/-/raw/main/")
