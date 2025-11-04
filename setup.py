@@ -35,7 +35,7 @@ README_FILE = os.path.join(os.path.dirname(__file__), 'README.rst')
 LONG_DESCRIPTION = open(README_FILE).read()
 
 setup(name='dabax',
-    version='1.0.10',
+    version='1.0.11',
     description='python access to DABAX files',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/x-rst',
