@@ -231,16 +231,19 @@ class DabaxBase(object):
         #
         dabax_repository = self.get_dabax_repository()
 
-        if os.path.exists(filename):
-            if self.verbose(): print("Dabax file exists in local directory: %s " % filename)
-            return filename
+        # Use a default writable directory
+        filepath = os.path.join(get_dabax_directory(), os.path.basename(filename)) # extra safety
+
+        if os.path.exists(filepath):
+            if self.verbose(): print("Dabax file exists in local directory: %s " % filepath)
+            return filepath
         #
         # download remote file
         #
         if dabax_repository[0:3] == "htt" or dabax_repository[0:3] == "ftp":
             try:
                 filepath, http_msg = urlretrieve(dabax_repository + filename,
-                                                 filename=filename,
+                                                 filename=filepath,
                                                  reporthook=None,
                                                  data=None)
 
@@ -260,12 +263,13 @@ class DabaxBase(object):
         #
         # file exists in local repository
         #
-        f1 = os.path.join(dabax_repository, filename)
-        if os.path.exists(f1):
-            if self.verbose(): print("Dabax file exists in local directory: %s " % f1)
-            return f1
+        filepath = os.path.join(dabax_repository, filename)
+        if os.path.exists(filepath):
+            if self.verbose(): print("Dabax file exists in local directory: %s " % filepath)
+            return filepath
 
-        print("Error trying to access file: %s" % f1)
+        print("Error trying to access file: %s" % filepath)
+
         raise Exception(FileNotFoundError)
 
 
@@ -627,6 +631,21 @@ class DabaxBase(object):
 
         return new_dict
 
+
+import os
+import sys
+
+def get_dabax_directory():
+    home = os.path.expanduser("~")
+
+    if sys.platform.startswith("win"): base = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
+    elif sys.platform == "darwin":     base = os.path.join(home, "Library", "Application Support")
+    else:                              base = os.environ.get("XDG_DATA_HOME", os.path.join(home, ".local", "share"))
+
+    dabax_directory = os.path.join(base, "Dabax")
+    os.makedirs(dabax_directory, exist_ok=True)
+
+    return dabax_directory
 
 
 
