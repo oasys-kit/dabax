@@ -248,7 +248,10 @@ class DabaxBase(object):
                                                  data=None)
 
                 if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
-                return filename
+
+                wait_until_downloaded(filepath)
+
+                return filepath
             except:
                 try: # in case there are write permissions issues
                     filepath, http_msg = urlretrieve(dabax_repository + filename,
@@ -257,6 +260,9 @@ class DabaxBase(object):
                                                      data=None)
 
                     if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
+
+                    wait_until_downloaded(filepath)
+
                     return filepath
                 except:
                     raise Exception("Failed to download file %s from %s" % (filename, dabax_repository))
@@ -634,6 +640,7 @@ class DabaxBase(object):
 
 import os
 import sys
+import time
 
 def get_dabax_directory():
     home = os.path.expanduser("~")
@@ -647,7 +654,13 @@ def get_dabax_directory():
 
     return dabax_directory
 
+def wait_until_downloaded(filepath, timeout=60):
+    start = time.time()
 
+    while True:
+        if os.path.exists(filepath): return True
+        if time.time() - start > timeout: return False
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     dx = DabaxBase(dabax_repository="https://gitlab.esrf.fr/srio/dabaxfiles/-/raw/main/")
