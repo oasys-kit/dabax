@@ -28,6 +28,7 @@ except:
 
 
 class Functions:
+    """Registry of DABAX data-file function types used to select parsing mode."""
     f0 = "f0"
     f1f2 = "f1f2"
     CrossSec = "CrossSec"
@@ -37,9 +38,16 @@ class Functions:
 
     @staticmethod
     def get_mode(function):
+        """Return the parsing mode (0=column, 1=entry) for the given function type."""
         return 0 if function in [Functions.f0, Functions.AtomicConstants] else 1
 
 class DabaxBase(object):
+    """
+    Base class providing access to DABAX data files (local or remote).
+
+    Handles downloading, caching, and parsing of SPEC-format DABAX files
+    for f0, f1f2, cross-sections, crystal structures, and atomic data.
+    """
     def __init__(self,
                  dabax_repository=None,
                  verbose=False,
@@ -50,9 +58,27 @@ class DabaxBase(object):
                  file_AtomicWeights="AtomicWeights.dat",
                  file_AtomicConstants="AtomicConstants.dat",
                  ):
-
-
-
+        """
+        Parameters
+        ----------
+        dabax_repository : str, optional
+            URL or local path to the DABAX file repository.
+            Defaults to the official GitHub raw URL.
+        verbose : bool, optional
+            Print file access messages.
+        file_f0 : str, optional
+            Name of the f0 data file.
+        file_f1f2 : str, optional
+            Name of the f1/f2 data file.
+        file_CrossSec : str, optional
+            Name of the cross-section data file.
+        file_Crystals : str, optional
+            Name of the crystal structures data file.
+        file_AtomicWeights : str, optional
+            Name of the atomic weights data file.
+        file_AtomicConstants : str, optional
+            Name of the atomic constants data file.
+        """
         self._dabax_repository = dabax_repository if not dabax_repository is None else self.get_dabax_default_repository()
         self._verbose = verbose
 
@@ -147,64 +173,82 @@ class DabaxBase(object):
         return [spec_file[i].data[:, 0] for i in index_list]
 
     def get_dabax_default_repository(self):
+        """Return the default remote DABAX repository URL."""
         return "https://raw.githubusercontent.com/oasys-kit/DabaxFiles/main/"
 
     def set_dabax_repository(self, repo):
+        """Set the DABAX repository URL or local path."""
         self._dabax_repository = repo
 
     def get_dabax_repository(self):
+        """Return the current DABAX repository URL or local path."""
         return self._dabax_repository
 
     def set_verbose(self, value=True):
+        """Enable or disable verbose output."""
         self._verbose = value
 
     def verbose(self):
+        """Return the verbose flag."""
         return self._verbose
 
     def set_file_f0(self, filename):
+        """Set and register the f0 data file."""
         self._file_f0 = filename
         self._sf_f0, self._sf_f0_entries = self._register_file(self._file_f0, Functions.f0)
 
     def get_file_f0(self):
+        """Return the current f0 data file name."""
         return self._file_f0
 
     def set_file_f1f2(self, filename):
+        """Set and register the f1/f2 data file."""
         self._file_f1f2 = filename
         self._sf_f1f2, self._sf_f1f2_entries = self._register_file(self._file_f1f2, Functions.f1f2)
 
     def get_file_f1f2(self):
+        """Return the current f1/f2 data file name."""
         return self._file_f1f2
 
     def set_file_CrossSec(self, filename):
+        """Set and register the cross-section data file."""
         self._file_CrossSec = filename
         self._sf_CrossSec, self._sf_CrossSec_entries = self._register_file(self._file_CrossSec, Functions.CrossSec)
 
     def get_file_CrossSec(self):
+        """Return the current cross-section data file name."""
         return self._file_CrossSec
 
     def set_file_Crystals(self, filename):
+        """Set and register the crystal structures data file."""
         self._file_Crystals = filename
         self._sf_Crystals, self._sf_Crystals_entries = self._register_file(self._file_Crystals, Functions.Crystals)
 
     def get_file_Crystals(self):
+        """Return the current crystal structures data file name."""
         return self._file_Crystals
 
 
     def set_file_AtomicWeights(self, filename):
+        """Set and register the atomic weights data file."""
         self._file_AtomicWeights = filename
         self._sf_AtomicWeights, self._sf_AtomicWeights_entries = self._register_file(self._file_AtomicWeights, Functions.AtomicWeights)
 
     def get_file_AtomicWeights(self) -> str:
+        """Return the current atomic weights data file name."""
         return self._file_AtomicWeights
 
     def set_file_AtomicConstants(self, filename):
+        """Set and register the atomic constants data file."""
         self._file_AtomicConstants = filename
         self._sf_AtomicConstants, self._sf_AtomicConstants_entries = self._register_file(self._file_AtomicConstants, Functions.AtomicConstants)
 
     def get_file_AtomicConstants(self):
+        """Return the current atomic constants data file name."""
         return self._file_AtomicConstants
 
     def info(self):
+        """Return a formatted string summarising the current DABAX configuration."""
         txt = "################  DABAX info ###########\n"
         txt += "dabax repository: %s\n" % self.get_dabax_repository()
         txt += "dabax f0 file: %s\n" % self.get_file_f0()
@@ -216,6 +260,7 @@ class DabaxBase(object):
 
 
     def is_remote(self):
+        """Return True if the repository is a remote URL."""
         if "http" in self.dabax_repository:
             return True
         else:
@@ -226,6 +271,19 @@ class DabaxBase(object):
     # common access tools
     #########################
     def get_dabax_file(self, filename):
+        """
+        Return the local path to a DABAX file, downloading it first if necessary.
+
+        Parameters
+        ----------
+        filename : str
+            DABAX file name (e.g. ``"f0_InterTables.dat"``).
+
+        Returns
+        -------
+        str
+            Absolute local filesystem path to the file.
+        """
         #
         # file exists in current directory
         #
@@ -284,6 +342,19 @@ class DabaxBase(object):
     #########################
 
     def get_f0_coeffs_from_dabax_file(self, entry_name="Y3+"):
+        """
+        Return the f0 parametric coefficients for a given element or ion.
+
+        Parameters
+        ----------
+        entry_name : str, optional
+            Element symbol or ion (e.g. ``"Si"``, ``"Y3+"``). Default ``"Y3+"``.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of f0 coefficients, or empty list if not found.
+        """
         filename           = self.get_file_f0()
         spec_file, entries = self._get_registered_spec_file(filename, Functions.f0)
         data, _, _         = DabaxBase._get_data_and_labels(spec_file,
@@ -295,6 +366,21 @@ class DabaxBase(object):
         else:                return []
 
     def f0_with_fractional_charge(self, Z, charge=0.0):
+        """
+        Return f0 coefficients for element Z at a given (possibly fractional) ionic charge.
+
+        Parameters
+        ----------
+        Z : int
+            Atomic number.
+        charge : float, optional
+            Ionic charge. Interpolates between tabulated values when non-integer.
+
+        Returns
+        -------
+        numpy.ndarray
+            f0 coefficient array.
+        """
         symbol = atomic_symbols()[Z]
 
         if charge == 0.0:
@@ -329,6 +415,23 @@ class DabaxBase(object):
     ######################
 
     def f1f2_extract(self, entry_name="Y3+"):
+        """
+        Extract raw f1/f2 tabulated data from the DABAX file.
+
+        Parameters
+        ----------
+        entry_name : str, optional
+            Element symbol or ion. Default ``"Y3+"``.
+
+        Returns
+        -------
+        energy_in_eV : numpy.ndarray
+            Photon energies in eV.
+        f1 : numpy.ndarray
+            Real part of the anomalous scattering factor.
+        f2 : numpy.ndarray
+            Imaginary part of the anomalous scattering factor.
+        """
         filename           = self.get_file_f1f2()
         spec_file, entries = self._get_registered_spec_file(filename, Functions.f1f2)
         data, _, _         = DabaxBase._get_data_and_labels(spec_file,
@@ -358,7 +461,23 @@ class DabaxBase(object):
                          energy,
                          method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
                          ):
+        """
+        Interpolate f1/f2 at given photon energy values.
 
+        Parameters
+        ----------
+        entry_name : str
+            Element symbol or ion.
+        energy : float or numpy.ndarray
+            Photon energy in eV.
+        method : int, optional
+            Interpolation method: 0=lin-lin, 1=lin-log, 2=log-lin (default), 3=log-log.
+
+        Returns
+        -------
+        f1_interpolated : float or numpy.ndarray
+        f2_interpolated : float or numpy.ndarray
+        """
         energy0, f1, f2 = self.f1f2_extract(entry_name)
 
         if method == 0:
@@ -395,6 +514,24 @@ class DabaxBase(object):
     ######################
 
     def crosssec_extract(self, entry_name="Si", partial='TotalCrossSection[barn/atom]'):
+        """
+        Extract raw cross-section tabulated data from the DABAX file.
+
+        Parameters
+        ----------
+        entry_name : str, optional
+            Element symbol. Default ``"Si"``.
+        partial : str, optional
+            Column label for the desired cross-section type.
+            Default ``'TotalCrossSection[barn/atom]'``.
+
+        Returns
+        -------
+        energy : numpy.ndarray
+            Photon energies in eV.
+        cs : numpy.ndarray
+            Cross-section values.
+        """
         filename                  = self.get_file_CrossSec()
         spec_file, entries        = self._get_registered_spec_file(filename, Functions.CrossSec)
         data, labels, index_found = DabaxBase._get_data_and_labels(spec_file,
@@ -430,7 +567,25 @@ class DabaxBase(object):
                          method=2, # 0: lin-lin, 1=lin-log, 2=log-lin, 3:log-log
                          partial='TotalCrossSection[barn/atom]',
                          ):
+        """
+        Interpolate cross-section at given photon energy values.
 
+        Parameters
+        ----------
+        entry_name : str
+            Element symbol.
+        energy : float or numpy.ndarray
+            Photon energy in eV.
+        method : int, optional
+            Interpolation method: 0=lin-lin, 1=lin-log, 2=log-lin (default), 3=log-log.
+        partial : str, optional
+            Column label for the cross-section type.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Interpolated cross-section value(s).
+        """
         out = self.crosssec_extract(entry_name, partial=partial)
 
         if out is None: raise Exception("Descriptor %s not in file %s" % (entry_name, self.get_file_CrossSec()))
@@ -463,18 +618,21 @@ class DabaxBase(object):
                              filename="AtomicWeights.dat",
                              ):
         """
-        ;       Returns atomic weights from DABAX.
-        ;
-        ; INPUTS:
-        ;       id: an identifier string (i.e. 'Si', '70Ge)
-        ;
-        ;       If descriptor is the symbol (e.g., Ge),
-        ;         the averaged atomic mass is returned.
-        ;       If descriptor contains the isotope (number of nucleons) (e.g., 70Ge),
-        ;         the atomic mass for the isotope is returned.
-        ;
-        ;       filename = the DABAX  inout file (default AtomicWeights.dat)
+        Return atomic weights from DABAX.
 
+        Parameters
+        ----------
+        descriptor : str or list of str
+            Element symbol (e.g. ``"Ge"``) or isotope string (e.g. ``"70Ge"``).
+            If a plain symbol is given, the averaged atomic mass is returned.
+            If an isotope prefix is given, the mass of that specific isotope is returned.
+        filename : str, optional
+            DABAX atomic weights file. Default ``"AtomicWeights.dat"``.
+
+        Returns
+        -------
+        float or list of float
+            Atomic weight(s) in atomic mass units.
         """
         spec_file, scan_names = self._get_registered_spec_file(filename, Functions.AtomicWeights)
 
@@ -512,46 +670,33 @@ class DabaxBase(object):
                          return_label=None,
                          ):
         """
-        ;	Returns atomic constants from DABAX.
-        ;
-        ; CALLING SEQUENCE:
-        ;	out = atomic_constants(id,file,return=return)
-        ; INPUTS:
-        ;	id: an identifier (or an array of identifiers) to be found in the
-        ;	scan title (i.e. 'Si')
-        ;
-        ; KEYWORDS:
-        ;	File = the DABAX  inout file (default: AtomicConstants.dat)
-        ;	return_label and return_item  define the variable to be returned.
-        ;   If return_name is not None, it has priority over retirn_index
-        ;		number of the column in the DABAX file, or a text
-        ;		identifier (case insensitive) listed below:
-        ;		return_label='AtomicRadius'	             or return_item=0
-        ;		return_label='CovalentRadius'	         or return_item=1
-        ;		return_label='AtomicMass'	             or return_item=2
-        ;		return_label='BoilingPoint'	             or return_item=3
-        ;		return_label='MeltingPoint'	             or return_item=4
-        ;		return_label='Density'	                 or return_item=5
-        ;		return_label='AtomicVolume'	             or return_item=6
-        ;		return_label='CoherentScatteringLength'	 or return_item=7
-        ;		return_label='IncoherentX-section'	     or return_item=8
-        ;		return_label='Absorption@1.8A'	         or return_item=9
-        ;		return_label='DebyeTemperature'          or return_item=10
-        ;		return_label='ThermalConductivity'       or return_item=11
-        ;
-        ; OUTPUT:
-        ;	out: the value of the selected parameter
-        ;
-        ; EXAMPLES:
-        ;	print(atomic_constants('Si',return='AtomicMass'))
-        ;	    28.085500
-        ;	print(atomic_constants(14,return='AtomicMass'))
-        ;           28.085500
-        ;	print(atomic_constants([14,27],return='AtomicMass'))
-        ;	    28.085500       58.933200
-        ;
-        ;-
+        Return atomic constants from DABAX.
 
+        Parameters
+        ----------
+        descriptor : str or list of str
+            Element symbol or list of symbols (e.g. ``"Si"`` or ``["Si", "Fe"]``).
+        filename : str, optional
+            DABAX atomic constants file. Default ``"AtomicConstants.dat"``.
+        return_item : int, optional
+            Column index to return (0–11). Used when ``return_label`` is None.
+        return_label : str, optional
+            Name of the quantity to return. Takes priority over ``return_item``.
+            Accepted values: ``'AtomicRadius'``, ``'CovalentRadius'``,
+            ``'AtomicMass'``, ``'BoilingPoint'``, ``'MeltingPoint'``,
+            ``'Density'``, ``'AtomicVolume'``, ``'CoherentScatteringLength'``,
+            ``'IncoherentX-section'``, ``'Absorption@1.8A'``,
+            ``'DebyeTemperature'``, ``'ThermalConductivity'``.
+
+        Returns
+        -------
+        float or list of float
+            Value(s) of the requested atomic constant.
+
+        Examples
+        --------
+        >>> dx.atomic_constants('Si', return_label='AtomicMass')
+        28.0855
         """
 
         if isinstance(descriptor, str):
@@ -600,12 +745,39 @@ class DabaxBase(object):
     def element_density(self,
                         descriptor,
                         filename="AtomicConstants.dat"):
+        """
+        Return the density of an element in g/cm³.
 
+        Parameters
+        ----------
+        descriptor : str or list of str
+            Element symbol(s).
+        filename : str, optional
+            DABAX atomic constants file.
+
+        Returns
+        -------
+        float or list of float
+            Density in g/cm³.
+        """
         return self.atomic_constants(descriptor, filename=filename, return_label="Density")
 
 
     def compound_parser(self, descriptor):
+        """
+        Parse a chemical formula and return composition data.
 
+        Parameters
+        ----------
+        descriptor : str
+            Chemical formula string (e.g. ``"SiO2"``, ``"H2O"``).
+
+        Returns
+        -------
+        dict
+            Dictionary with keys: ``nElements``, ``nAtomsAll``, ``Elements``
+            (list of Z), ``massFractions``, ``nAtoms``, ``molarMass``.
+        """
         zetas, fatomic = parse_formula(formula=descriptor, verbose=self.verbose())
 
         elements = []
@@ -643,6 +815,14 @@ import sys
 import time
 
 def get_dabax_directory():
+    """
+    Return the platform-specific local directory used to cache DABAX files.
+
+    Returns
+    -------
+    str
+        Path to the local DABAX cache directory (created if absent).
+    """
     home = os.path.expanduser("~")
 
     if sys.platform.startswith("win"): base = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
@@ -655,6 +835,21 @@ def get_dabax_directory():
     return dabax_directory
 
 def wait_until_downloaded(filepath, timeout=60):
+    """
+    Block until a file appears on disk or a timeout is reached.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to wait for.
+    timeout : float, optional
+        Maximum wait time in seconds. Default 60.
+
+    Returns
+    -------
+    bool
+        True if the file appeared, False on timeout.
+    """
     start = time.time()
 
     while True:

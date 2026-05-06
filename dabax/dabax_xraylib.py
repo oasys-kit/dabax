@@ -18,7 +18,20 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
                  file_CrossSec = "CrossSec_EPDL97.dat",
                  file_Crystals="Crystals.dat",
                  ):
-
+        """
+        Parameters
+        ----------
+        dabax_repository : str, optional
+            URL or local path to the DABAX repository.
+        file_f0 : str, optional
+            f0 data file name.
+        file_f1f2 : str, optional
+            f1/f2 data file name.
+        file_CrossSec : str, optional
+            Cross-section data file name.
+        file_Crystals : str, optional
+            Crystal structures data file name.
+        """
         DabaxBase.__init__(self,
                            dabax_repository=dabax_repository,
                            file_f0=file_f0,
@@ -29,9 +42,12 @@ class DabaxXraylib(DabaxBase, DabaxXraylibDecorator):
         self._file_NIST = "CompoundsNIST.dat"
         self._sf_NIST, self._sf_NIST_entries = self._register_file(self._file_NIST, Functions.CompoundDataNIST)
 
-    def get_file_NIST(self): return self._file_NIST
+    def get_file_NIST(self):
+        """Return the NIST compound data file name."""
+        return self._file_NIST
 
     def _register_file(self, filename, function):
+        """Register a DABAX file, with special handling for the NIST compound file."""
         if function == Functions.CompoundDataNIST:
             spec_file = SpecFile(self.get_dabax_file(filename))
             entries   = [spec_file[index].scan_header_dict["Uname"] for index in range(len(spec_file))]

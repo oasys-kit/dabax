@@ -13,25 +13,42 @@ from dabax.common_tools import calculate_f0_from_f0coeff
 from dabax.dabax_base import Functions as BaseFunctions, DabaxBase
 
 class Functions(BaseFunctions):
+    """Extended function-type registry adding NIST compound data support."""
     CompoundDataNIST = 'CompoundDataNIST'
 
     @staticmethod
     def get_mode(function):
+        """Return the parsing mode for the given function type."""
         if function == Functions.CompoundDataNIST: return 0
         else:                                      return BaseFunctions.get_mode(function)
 
 class DabaxXraylibDecorator(object):
+    """
+    Mixin providing an xraylib-compatible API backed by DABAX data files.
+
+    Not all xraylib functions are implemented. Mix in with :class:`DabaxBase`
+    (see :class:`DabaxXraylib`) to obtain a fully usable object.
+    """
 
     #########################
     # crystals
     #########################
     def Crystal_GetCrystal(self, entry_name='YB66'):
         """
-        parse a complex crystal structure file into a dictionary (like xraylib.Crystal_GetCrystal('Si'))
+        Parse a crystal structure from the DABAX file (equivalent to ``xraylib.Crystal_GetCrystal``).
 
-        it has an additional fiels for each atom: the charge
+        Parameters
+        ----------
+        entry_name : str, optional
+            Crystal name as stored in the DABAX Crystals file. Default ``'YB66'``.
 
-        return a dictionary containing crystal infomation
+        Returns
+        -------
+        dict
+            Crystal dictionary with keys: ``name``, ``a``, ``b``, ``c``,
+            ``alpha``, ``beta``, ``gamma``, ``volume``, ``n_atom``, ``atom``
+            (list of atom dicts each with ``Zatom``, ``fraction``, ``x``,
+            ``y``, ``z``, ``charge``), ``cpointer``.
         """
 
 
@@ -143,11 +160,43 @@ class DabaxXraylibDecorator(object):
         return crystals
 
     def Crystal_dSpacing(self, cryst, h, k, l):
+        """
+        Return the d-spacing for Miller indices (h, k, l).
+
+        Parameters
+        ----------
+        cryst : dict
+            Crystal dictionary as returned by :meth:`Crystal_GetCrystal`.
+        h, k, l : int
+            Miller indices.
+
+        Returns
+        -------
+        float
+            d-spacing in Å.
+        """
         return bragg_metrictensor(cryst['a'], cryst['b'], cryst['c'],
                                   cryst['alpha'], cryst['beta'], cryst['gamma'],
                                   HKL=[h, k, l])
 
     def Bragg_angle(self, cryst, E_keV, h, k, l):
+        """
+        Return the Bragg angle for a given crystal reflection and photon energy.
+
+        Parameters
+        ----------
+        cryst : dict
+            Crystal dictionary as returned by :meth:`Crystal_GetCrystal`.
+        E_keV : float
+            Photon energy in keV.
+        h, k, l : int
+            Miller indices.
+
+        Returns
+        -------
+        float
+            Bragg angle in radians.
+        """
         dspacing = self.Crystal_dSpacing(cryst, h, k, l)  # in A
         wavelength = codata.h * codata.c / codata.e / (E_keV * 1e3) * 1e10  # in A
         return numpy.arcsin(wavelength / 2 / dspacing)
@@ -160,6 +209,27 @@ class DabaxXraylibDecorator(object):
                                     millerL,
                                     debyeWaller,
                                     ratio_theta_thetaB=1.0):
+        """
+        Calculate the crystal structure factor F_H for a given reflection.
+
+        Parameters
+        ----------
+        crystal_id : dict
+            Crystal dictionary as returned by :meth:`Crystal_GetCrystal`.
+        energy_in_kev : float
+            Photon energy in keV.
+        millerH, millerK, millerL : int
+            Miller indices.
+        debyeWaller : float
+            Debye-Waller factor.
+        ratio_theta_thetaB : float, optional
+            Ratio of theta to the Bragg angle. Default 1.0.
+
+        Returns
+        -------
+        complex or numpy.ndarray
+            Structure factor F_H.
+        """
         energy = energy_in_kev * 1e3
         wavelength = codata.h * codata.c / codata.e / energy * 1e10
         # print(crystal_id["n_atom"])
@@ -199,31 +269,38 @@ class DabaxXraylibDecorator(object):
     #  misc
     #########################
     def CompoundParser(self, descriptor):
+        """Parse a chemical formula string (xraylib-compatible interface)."""
         return self.compound_parser(descriptor)
 
     def SymbolToAtomicNumber(self, symbol):
+        """Return the atomic number for a given element symbol."""
         return atomic_number(symbol)
 
     def AtomicNumberToSymbol(self, Z):
+        """Return the element symbol for a given atomic number."""
         return atomic_symbols()[Z]
 
     def ElementDensity(self, Z):
+        """Return the density of an element in g/cm³ given its atomic number."""
         return self.element_density(self.AtomicNumberToSymbol(Z))
 
     def AtomicWeight(self, Z):
+        """Return the atomic weight for a given atomic number."""
         return self.atomic_weights(self.AtomicNumberToSymbol(Z))
 
     #########################
     #  scattering functions
     #########################
     def Fi(self, Z, energy):
+        """Return f1 (real anomalous scattering factor) for element Z at given energy (keV)."""
         return self.FiAndFii(Z, energy)[0]
 
     def Fii(self, Z, energy):
+        """Return f2 (imaginary anomalous scattering factor) for element Z at given energy (keV)."""
         return self.FiAndFii(Z, energy)[1]
 
     def FF_Rayl(self, Z, q):
-
+        """Return the Rayleigh form factor for element Z at momentum transfer q (Å⁻¹)."""
         coeffs = self.f0_with_fractional_charge(Z, charge=0.0)
         return calculate_f0_from_f0coeff(coeffs, q)
 
@@ -233,32 +310,40 @@ class DabaxXraylibDecorator(object):
 
     # main (barns)
     def CSb_Total(self, Z, energy):
+        """Total mass cross section (cm²/g) for element Z at energy (keV)."""
         return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
                                          partial='TotalCrossSection[barn/atom]',)
 
     def CSb_Photo(self, Z, energy):
+        """Photoelectric mass cross section (cm²/g) for element Z at energy (keV)."""
         return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
                                          partial='PhotoElectric[barn/atom]',)
     def CSb_Rayl(self, Z, energy):
+        """Rayleigh scattering mass cross section (cm²/g) for element Z at energy (keV)."""
         return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
                                          partial='Rayleigh(coherent)[barn/atom]',)
 
     def CSb_Compt(self, Z, energy):
+        """Compton scattering mass cross section (cm²/g) for element Z at energy (keV)."""
         return self.crosssec_interpolate(self.AtomicNumberToSymbol(Z), energy * 1e3,
                                          partial='Compton(incoherent)[barn/atom]',)
 
     # in cm2/g
 
     def CS_Total(self, Z, energy):
+        """Total cross section (barn/atom) for element Z at energy (keV)."""
         return self.CSb_Total(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
 
     def CS_Photo(self, Z, energy):
+        """Photoelectric cross section (barn/atom) for element Z at energy (keV)."""
         return self.CSb_Photo(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
 
     def CS_Rayl(self, Z, energy):
+        """Rayleigh scattering cross section (barn/atom) for element Z at energy (keV)."""
         return self.CSb_Rayl(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
 
     def CS_Compt(self, Z, energy):
+        """Compton scattering cross section (barn/atom) for element Z at energy (keV)."""
         return self.CSb_Compt(Z, energy) * (codata.Avogadro * 1e-24 / self.AtomicWeight(Z))
 
 
@@ -266,6 +351,7 @@ class DabaxXraylibDecorator(object):
 
 
     def CS_Total_CP(self, descriptor, energy):
+        """Total cross section (barn/atom) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -273,6 +359,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CSb_Total_CP(self, descriptor, energy):
+        """Total mass cross section (cm²/g) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -280,6 +367,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CS_Photo_CP(self, descriptor, energy):
+        """Photoelectric cross section (barn/atom) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -287,6 +375,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CSb_Photo_CP(self, descriptor, energy):
+        """Photoelectric mass cross section (cm²/g) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -294,6 +383,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CS_Rayl_CP(self, descriptor, energy):
+        """Rayleigh cross section (barn/atom) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -301,6 +391,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CSb_Rayl_CP(self, descriptor, energy):
+        """Rayleigh mass cross section (cm²/g) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -308,6 +399,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CS_Compt_CP(self, descriptor, energy):
+        """Compton cross section (barn/atom) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -315,6 +407,7 @@ class DabaxXraylibDecorator(object):
         return out
 
     def CSb_Compt_CP(self, descriptor, energy):
+        """Compton mass cross section (cm²/g) for a compound at energy (keV)."""
         cp = self.CompoundParserCheckingNIST(descriptor,)
         out = 0.0
         for i in range(cp["nElements"]):
@@ -326,6 +419,7 @@ class DabaxXraylibDecorator(object):
     #########################
 
     def Refractive_Index(self, descriptor, energy, density):
+        """Return the complex refractive index for a material at given energy (keV) and density (g/cm³)."""
         cp = self.compound_parser(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
         rv_re = 0.0
@@ -338,6 +432,7 @@ class DabaxXraylibDecorator(object):
         return (1 - rv_re * density) + 1j*(rv_im * density * 9.8663479e-9 / energy)
 
     def Refractive_Index_Re(self, descriptor, energy, density):
+        """Return the real part of the refractive index for a material at given energy (keV) and density (g/cm³)."""
         cp = self.compound_parser(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
         rv = 0.0
@@ -348,6 +443,7 @@ class DabaxXraylibDecorator(object):
         return (1 - rv * density)
 
     def Refractive_Index_Im(self, descriptor, energy, density):
+        """Return the imaginary part of the refractive index for a material at given energy (keV) and density (g/cm³)."""
         cp = self.compound_parser(descriptor)
         rv = 0.0
         for i in range(cp["nElements"]):
@@ -362,12 +458,14 @@ class DabaxXraylibDecorator(object):
     #
 
     def GetCompoundDataNISTList(self):
+        """Return the list of NIST compound names available in the DABAX file."""
         filename         = self.get_file_NIST()
         _, compound_list = self._get_registered_spec_file(filename, Functions.CompoundDataNIST)
 
         return compound_list
 
     def GetCompoundDataNISTByIndex(self, index_found):
+        """Return NIST compound data dict for the entry at the given index."""
         filename = self.get_file_NIST()
         spec_file, _ = self._get_registered_spec_file(filename, Functions.CompoundDataNIST)
 
@@ -387,6 +485,7 @@ class DabaxXraylibDecorator(object):
         return {"name": name, 'nElements': nElements, 'density': density, 'Elements': Elements, 'massFractions': massFractions}
 
     def GetCompoundDataNISTByName(self, entry_name):
+        """Return NIST compound data dict for the entry with the given name."""
         return self.GetCompoundDataNISTByIndex(self.GetCompoundDataNISTList().index(entry_name))
 
 
@@ -455,6 +554,7 @@ class DabaxXraylibDecorator(object):
     # there are not in xraylib, but accelerate the calculation
     #
     def CompoundParserCheckingNIST(self, descriptor):
+        """Parse a compound descriptor, checking the NIST database first before formula parsing."""
         try:
             out_dict = self.compound_parser(descriptor)
 
@@ -467,6 +567,7 @@ class DabaxXraylibDecorator(object):
         return out_dict
 
     def FiAndFii(self, Z, energy):
+        """Return (f1, f2) anomalous scattering factors for element Z at given energy (keV)."""
         symbol = self.AtomicNumberToSymbol(Z)
         f1, f2 = self.f1f2_interpolate(symbol, energy*1e3)
         if self.get_file_f1f2() in ['f1f2_Windt.dat','f1f2_Henke.dat','f1f2_EPDL97.dat','f1f2_Chantler.dat','f1f2_asf_Kissel.dat']:
@@ -482,6 +583,27 @@ class DabaxXraylibDecorator(object):
                                     millerL,
                                     debyeWaller,
                                     rel_angle=1.0):
+        """
+        Calculate F_0, F_H, and F_H_bar structure factors in one call.
+
+        Parameters
+        ----------
+        crystal_id : dict
+            Crystal dictionary as returned by :meth:`Crystal_GetCrystal`.
+        energy_in_kev : float
+            Photon energy in keV.
+        millerH, millerK, millerL : int
+            Miller indices.
+        debyeWaller : float
+            Debye-Waller factor.
+        rel_angle : float, optional
+            Ratio of theta to the Bragg angle. Default 1.0.
+
+        Returns
+        -------
+        tuple of complex
+            (F_0, F_H, F_H_bar) structure factors.
+        """
         energy = energy_in_kev * 1e3
         wavelength = codata.h * codata.c / codata.e / energy * 1e10
         # print(crystal_id["n_atom"])

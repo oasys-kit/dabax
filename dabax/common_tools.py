@@ -10,6 +10,7 @@ from scipy.optimize import curve_fit
 #
 
 def atomic_symbols():
+    """Return a list of element symbols indexed by atomic number (index 0 = Vacuum)."""
     return [
         'Vacuum', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
         'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca',
@@ -25,6 +26,7 @@ def atomic_symbols():
         'Rg', 'Uub', 'Uut', 'Uuq', 'Uup', 'Uuh', 'Uus', 'Uuo']
 
 def atomic_names():
+    """Return a list of element names indexed by atomic number (index 0 = Vacuum)."""
     return [
         'Vacuum',
         'Hydrogen', 'Helium', 'Lithium', 'Beryllium', 'Boron',
@@ -53,10 +55,39 @@ def atomic_names():
         'Ununhexium', 'Ununseptium', 'Ununoctium']
 
 def atomic_number(symbol):
+    """
+    Return the atomic number for a given element symbol.
+
+    Parameters
+    ----------
+    symbol : str
+        Element symbol (e.g. ``"Si"``).
+
+    Returns
+    -------
+    int
+        Atomic number.
+    """
     return atomic_symbols().index(symbol)
 
 def parse_formula(formula, verbose=False):
+    """
+    Parse a chemical formula string into lists of atomic numbers and stoichiometric coefficients.
 
+    Parameters
+    ----------
+    formula : str
+        Chemical formula string, e.g. ``"SiO2"``, ``"Ca5(PO4)3.1F"``.
+    verbose : bool, optional
+        Print intermediate parsing steps.
+
+    Returns
+    -------
+    zetas : list of int
+        Atomic numbers of each element in the formula.
+    fatomic : list of float
+        Stoichiometric coefficients for each element.
+    """
     import re
     if formula.count('(') == 0:
         pass
@@ -156,8 +187,15 @@ def f0_xop(Z):
 
     Column description: a1  a2  a3  a4  a5  c  b1  b2  b3 b4  b5
 
-    :param Z: the atomic number
-    :return: the 11 coefficients for buiding f0
+    Parameters
+    ----------
+    Z : int
+        Atomic number.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of 11 Waasmaier-Kirfel-like coefficients ``[a1..a5, c, b1..b5]``.
     """
     tmp = [
     [ 0.30426303,     0.45440815,     0.07977026,     0.15268426,     0.00871624,     0.00006937,     9.61768510,    23.52152246,     3.33237545,    53.49579285,     0.80301704],
@@ -267,6 +305,21 @@ def f0_xop(Z):
 #
 
 def calculate_f0_from_f0coeff(f0coeff, ratio):
+    """
+    Evaluate f0 from its parametric coefficients.
+
+    Parameters
+    ----------
+    f0coeff : array-like
+        Coefficient array ``[a1..an, c, b1..bn]`` (length 2n+1).
+    ratio : float or numpy.ndarray
+        sin(theta)/lambda in Å⁻¹.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        f0 value(s).
+    """
     icentral = len(f0coeff) // 2
     F0 = f0coeff[icentral]
     for i in range(icentral):
@@ -274,6 +327,25 @@ def calculate_f0_from_f0coeff(f0coeff, ratio):
     return F0
 
 def f0_interpolate_coefficients(charge, charge_list, coefficient_list, verbose=False):
+    """
+    Interpolate f0 coefficients between available ionic charges.
+
+    Parameters
+    ----------
+    charge : float
+        Target ionic charge.
+    charge_list : list of float
+        Available charge values in the data.
+    coefficient_list : list of array-like
+        f0 coefficients corresponding to each entry in ``charge_list``.
+    verbose : bool, optional
+        Print interpolation details.
+
+    Returns
+    -------
+    numpy.ndarray
+        Interpolated coefficient array.
+    """
     #
     # f0 data
     #
@@ -334,6 +406,19 @@ def __f0func(q, a1, a2, a3, a4, a5, a6, a7, a8, a9):
 
 
 def f0_xop_with_fractional_charge_data(Z):
+    """
+    Return the tabulated f0 coefficient data for fractional charges for element Z.
+
+    Parameters
+    ----------
+    Z : int
+        Atomic number.
+
+    Returns
+    -------
+    list of dict
+        Each dict contains ``Z``, ``charge_list``, and ``coefficient_list``.
+    """
     a = []
     a.append({'Z': 1 ,'charge_list': [0.0, -1] ,'coefficient_list': [[0.493002, 0.322912, 0.140191, 0.04081, 0.0030380001, 10.5109, 26.1257, 3.14236, 57.7997], [0.897661, 0.565616, 0.415815, 0.116973, 0.002389, 53.1368, 15.187, 186.576, 3.56709]] })
     a.append({'Z': 2 ,'charge_list': [0.0] ,'coefficient_list': [[0.8734, 0.6309, 0.3112, 0.178, 0.0063999998, 9.1037, 3.3568, 22.9276, 0.9821]] })
