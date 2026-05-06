@@ -1,3 +1,6 @@
+"""
+Common calculation tools for X-ray crystallography (structure factors, Bragg metric, atomic data).
+"""
 import numpy
 from scipy.optimize import curve_fit
 

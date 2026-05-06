@@ -1,3 +1,6 @@
+"""
+Decorator and function registry providing an xraylib-compatible interface backed by DABAX data.
+"""
 #
 # dabax functions with the same interface as xraylib
 #

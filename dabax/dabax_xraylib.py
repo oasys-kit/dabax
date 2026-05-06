@@ -1,3 +1,6 @@
+"""
+xraylib-compatible API implementation using DABAX data files.
+"""
 import numpy
 from dabax.dabax_base import DabaxBase
 from dabax.dabax_xraylib_decorator import DabaxXraylibDecorator, Functions

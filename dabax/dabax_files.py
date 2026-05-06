@@ -1,3 +1,6 @@
+"""
+Utilities for listing and accessing DABAX data files.
+"""
 
 def dabax_f0_files():
     return ["f0_InterTables.dat", "f0_WaasKirf.dat", "f0_xop.dat"]
