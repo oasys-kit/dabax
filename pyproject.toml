@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dabax"
+version = "1.0.13"
+description = "python access to DABAX files"
+readme = "README.rst"
+license = "MIT"
+# license-files = ["LICENSE"]   # <- uncomment if a LICENSE file exists in the repo
+authors = [
+    { name = "Manuel Sanchez del Rio", email = "srio@esrf.eu" },
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "silx",
+]
+
+[project.urls]
+Homepage = "https://github.com/oasys-kit/dabax/"
+
+[tool.setuptools.packages.find]
+include = ["dabax", "dabax.*"]
