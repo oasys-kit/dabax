@@ -769,7 +769,7 @@ class DabaxXraylibDecorator(object):
         complex
             Complex refractive index n.
         """
-        cp = self.compound_parser(descriptor)
+        cp = self.CompoundParserCheckingNIST(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
         rv_re = 0.0
         rv_im = 0.0
@@ -798,7 +798,7 @@ class DabaxXraylibDecorator(object):
         float
             Real part of the refractive index (≤ 1 for X-rays).
         """
-        cp = self.compound_parser(descriptor)
+        cp = self.CompoundParserCheckingNIST(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
         rv = 0.0
         for i in range(cp["nElements"]):
@@ -825,7 +825,7 @@ class DabaxXraylibDecorator(object):
         float
             Imaginary part of the refractive index (related to absorption).
         """
-        cp = self.compound_parser(descriptor)
+        cp = self.CompoundParserCheckingNIST(descriptor)
         rv = 0.0
         for i in range(cp["nElements"]):
             Z = cp["Elements"][i]
