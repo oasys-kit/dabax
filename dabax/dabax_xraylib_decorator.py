@@ -1036,7 +1036,7 @@ class DabaxXraylibDecorator(object):
         millerH, millerK, millerL : int
             Miller indices.
         debyeWaller : float
-            Debye-Waller factor.
+            Debye-Waller factor, applied to F_H and F_H_bar only (it is 1 for F_0).
         rel_angle : float, optional
             Ratio of theta to the Bragg angle. Default 1.0.
 
@@ -1081,7 +1081,7 @@ class DabaxXraylibDecorator(object):
                 Fi  = self.Fi(Z_i, energy_in_kev)
                 Fii = self.Fii(Z_i, energy_in_kev)
 
-            F_0 += (f0_i_zero + Fi - Fii * 1j) * list_fraction[i] * debyeWaller
+            F_0 += (f0_i_zero + Fi - Fii * 1j) * list_fraction[i] # no Debye-Waller factor at H=0
 
             F_H += (f0_i + Fi - Fii * 1j) * list_fraction[i] * debyeWaller * \
                    numpy.exp(2j*numpy.pi*(millerH*list_x[i]+millerK*list_y[i]+millerL*list_z[i]))
