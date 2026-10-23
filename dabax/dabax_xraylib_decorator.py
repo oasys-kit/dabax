@@ -390,7 +390,8 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         float
-            Δf″ (imaginary anomalous absorption correction, always positive).
+            Δf″ (imaginary anomalous absorption correction). Negative, as in xraylib:
+            the atomic scattering factor is f = f0 + Δf′ - i Δf″.
         """
         return self.FiAndFii(Z, energy)[1]
 
@@ -1007,7 +1008,8 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         tuple of float or numpy.ndarray
-            ``(f1, f2)`` where ``f1`` = Δf′ and ``f2`` = Δf″ (both positive).
+            ``(f1, f2)`` where ``f1`` = Δf′ and ``f2`` = Δf″. As in xraylib, Δf″ is
+            returned negative: the atomic scattering factor is f = f0 + Δf′ - i Δf″.
         """
         symbol = self.AtomicNumberToSymbol(Z)
         f1, f2 = self.f1f2_interpolate(symbol, energy*1e3)
