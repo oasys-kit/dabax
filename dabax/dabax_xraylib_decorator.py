@@ -390,8 +390,11 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         float
-            Δf″ (imaginary anomalous absorption correction). Negative, as in xraylib:
-            the atomic scattering factor is f = f0 + Δf′ - i Δf″.
+            -f″, with f″ > 0 the imaginary anomalous correction (negative value, as in
+            xraylib). Fii is the imaginary part of f - f0 in the exp(-iωt) convention,
+            f = f0 + Fi + i Fii. The structure-factor methods of this class use the
+            exp(+iωt) convention (International Tables), f = f0 + Fi - i Fii = f0 + f′ + i f″,
+            with the phase factor exp(+2πi H·r).
         """
         return self.FiAndFii(Z, energy)[1]
 
@@ -753,7 +756,13 @@ class DabaxXraylibDecorator(object):
 
     def Refractive_Index(self, descriptor, energy, density):
         """
-        Return the complex refractive index n = n_re + i·n_im for a material.
+        Return the complex refractive index n = 1 - δ + iβ for a material.
+
+        As in xraylib, n is returned in the exp(-iωt) convention (Im n = β > 0). In the
+        exp(+iωt) convention used by the structure-factor methods of this class,
+        n = 1 - δ - iβ = 1 + χ0/2 (complex conjugate). δ is computed from f′ (Fi);
+        β from the total attenuation coefficient (CS_Total), which includes Rayleigh and
+        Compton scattering, not from f″.
 
         Parameters
         ----------
@@ -767,7 +776,7 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         complex
-            Complex refractive index n.
+            Complex refractive index n = 1 - δ + iβ.
         """
         cp = self.CompoundParserCheckingNIST(descriptor)
         KD = 4.15179082788e-4  # TODO: recalculate with codata....
@@ -823,7 +832,9 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         float
-            Imaginary part of the refractive index (related to absorption).
+            β > 0, the imaginary part of n = 1 - δ + iβ (exp(-iωt) convention, as in
+            xraylib), computed from the total attenuation coefficient (CS_Total):
+            β = μ_tot λ / (4π).
         """
         cp = self.CompoundParserCheckingNIST(descriptor)
         rv = 0.0
@@ -1008,8 +1019,9 @@ class DabaxXraylibDecorator(object):
         Returns
         -------
         tuple of float or numpy.ndarray
-            ``(f1, f2)`` where ``f1`` = Δf′ and ``f2`` = Δf″. As in xraylib, Δf″ is
-            returned negative: the atomic scattering factor is f = f0 + Δf′ - i Δf″.
+            ``(f1, f2)`` where ``f1`` = f′ and ``f2`` = -f″ (negative, as in xraylib),
+            with f″ > 0 the imaginary anomalous correction. See :meth:`Fii` for the
+            relation with the exp(±iωt) conventions.
         """
         symbol = self.AtomicNumberToSymbol(Z)
         f1, f2 = self.f1f2_interpolate(symbol, energy*1e3)
