@@ -6,9 +6,6 @@ Package API
 This page lists the main classes and modules in this package.
 
 
-``dabax`` classes.
-
-
 base
 ----
 ``dabax.dabax_base`` Base class for dabax file access

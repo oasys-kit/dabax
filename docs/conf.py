@@ -9,9 +9,12 @@ import dabax
 # -- Project information -----------------------------------------------------
 
 project = 'dabax'
-copyright = '2024, M. Sanchez del Rio'
+copyright = '2024-2026, M. Sanchez del Rio'
 author = 'M. Sanchez del Rio'
-release = '0.1'
+import tomllib
+with open(os.path.join(os.path.dirname(__file__), '..', 'pyproject.toml'), 'rb') as _f:
+    release = tomllib.load(_f)['project']['version']
+version = release
 
 # -- General configuration ---------------------------------------------------
 
@@ -19,7 +22,6 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.autosummary',
-              'nbsphinx',
               'myst_parser'
 ]
 
@@ -27,17 +29,15 @@ myst_enable_extensions = ["dollarmath"]
 
 autosummary_generate = True
 
-templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
 
 html_context = {
     'display_github': True,
     'github_user': 'oasys-kit',
     'github_repo': 'dabax',
-    'github_version': 'master/docs/',
+    'github_version': 'main/docs/',
 }
