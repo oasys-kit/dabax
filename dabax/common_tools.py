@@ -142,7 +142,7 @@ def parse_formula(formula, verbose=False):
 #TODO: in future we will use xraylib, by now we use this.
 def f0_xop(Z):
     """
-    Returns the f0 value as stired in the f0_xop DABAX file:
+    Returns the f0 value as stored in the f0_xop DABAX file:
 
     Parametrization of f0 (the non-dispersive part of the atomic scttering factor) vs sin(theta/lambda).
     This file contains a Waasmaier&Kirfel-like parametrization
