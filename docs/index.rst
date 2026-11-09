@@ -17,6 +17,7 @@ Python library to access DABAX (DAtaBAse for X-rays) files.
    installation
    api
    examples
+   sign_conventions
 
 Indices and tables
 ------------------

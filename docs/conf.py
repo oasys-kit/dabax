@@ -19,8 +19,11 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.autosummary',
-              'nbsphinx'
+              'nbsphinx',
+              'myst_parser'
 ]
+
+myst_enable_extensions = ["dollarmath"]
 
 autosummary_generate = True
 
