@@ -41,3 +41,14 @@ html_context = {
     'github_repo': 'dabax',
     'github_version': 'main/docs/',
 }
+
+
+# The pages in generated/ are created at build time by autosummary and the index pages
+# have no source file, so "Edit on GitHub" would give a 404 for them.
+def _hide_github_link(app, pagename, templatename, context, doctree):
+    if pagename.startswith('generated/') or pagename in ('genindex', 'py-modindex', 'search'):
+        context['display_github'] = False
+
+
+def setup(app):
+    app.connect('html-page-context', _hide_github_link)
