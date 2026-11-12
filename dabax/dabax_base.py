@@ -7,7 +7,9 @@ from typing import Tuple, List, Any
 
 import numpy
 import os
-from urllib.request import urlretrieve, build_opener, HTTPSHandler, install_opener
+import shutil
+import tempfile
+from urllib.request import build_opener, HTTPSHandler
 from silx.io.specfile import SpecFile
 import ssl
 
@@ -15,16 +17,37 @@ from dabax.common_tools import calculate_f0_from_f0coeff, f0_interpolate_coeffic
 from dabax.common_tools import atomic_symbols, atomic_names, atomic_number
 from dabax.common_tools import parse_formula
 
+# Opener used only for the DABAX downloads, with an "unverified" SSL context for HTTPS.
+# It is NOT installed as the global urllib opener (install_opener), as this would change the
+# behaviour of urlopen/urlretrieve for all the other packages running in the same process
+# (e.g. in OASYS it made other widgets fail with HTTP 403 on Windows).
 try:
-    # create an "unverified" SSL context
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-
-    # build and install an opener that uses the unverified context for HTTPS
-    install_opener(build_opener(HTTPSHandler(context=context)))
+    _context = ssl.create_default_context()
+    _context.check_hostname = False
+    _context.verify_mode = ssl.CERT_NONE
+    _OPENER = build_opener(HTTPSHandler(context=_context))
 except:
-    pass
+    _OPENER = build_opener()
+
+def _urlretrieve(url, filename=None):
+    """
+    Download url into filename (a temporary file if None) using the DABAX opener.
+    The file is written under a temporary name and renamed when complete, so that an
+    interrupted download does not leave an incomplete file in the cache.
+    Returns (filename, headers), like urllib.request.urlretrieve.
+    """
+    with _OPENER.open(url) as response:
+        if filename is None:
+            fd, filename = tempfile.mkstemp(suffix=os.path.splitext(url)[1])
+            os.close(fd)
+        partial = filename + ".part"
+        try:
+            with open(partial, "wb") as f:
+                shutil.copyfileobj(response, f)
+            os.replace(partial, filename)
+        finally:
+            if os.path.exists(partial): os.remove(partial)
+        return filename, response.headers
 
 
 class Functions:
@@ -300,10 +323,7 @@ class DabaxBase(object):
         #
         if dabax_repository[0:3] == "htt" or dabax_repository[0:3] == "ftp":
             try:
-                filepath, http_msg = urlretrieve(dabax_repository + filename,
-                                                 filename=filepath,
-                                                 reporthook=None,
-                                                 data=None)
+                filepath, http_msg = _urlretrieve(dabax_repository + filename, filename=filepath)
 
                 if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
 
@@ -312,10 +332,8 @@ class DabaxBase(object):
                 return filepath
             except:
                 try: # in case there are write permissions issues
-                    filepath, http_msg = urlretrieve(dabax_repository + filename,
-                                                     filename=None, # will create a temp file
-                                                     reporthook=None,
-                                                     data=None)
+                    filepath, http_msg = _urlretrieve(dabax_repository + filename,
+                                                      filename=None) # will create a temp file
 
                     if self.verbose(): print("Dabax file %s downloaded from %s" % (filepath, dabax_repository + filename))
 
